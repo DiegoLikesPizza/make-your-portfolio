@@ -1,0 +1,143 @@
+// Data model for the portfolio builder.
+//
+// Note what is NOT here: nothing about layout, themes, tokens or sections.
+// The entire portfolio is one versioned JSON document (`draftDoc` / `publishedDoc`)
+// validated by src/lib/schema/portfolio.ts. That keeps publish an atomic copy,
+// makes version history trivial to add later, and means growing the variant
+// catalog never touches a migration.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------- auth
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  sites    Site[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ---------------------------------------------------------------- sites
+
+model Site {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Lowercase, validated against src/lib/reserved-subdomains.ts.
+  subdomain String @unique
+
+  /// PortfolioDoc — what the editor is currently working on.
+  draftDoc Json
+
+  /// PortfolioDoc — what the public sees. Null until first publish;
+  /// an unpublished site 404s on every public host.
+  publishedDoc Json?
+  publishedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domains Domain[]
+  assets  Asset[]
+
+  @@index([userId])
+}
+
+/// A custom hostname. Caddy's on-demand TLS asks /api/caddy/authorize before
+/// issuing a certificate, and that endpoint only says yes to `verified` rows —
+/// so an unverified row can never burn an ACME rate limit.
+model Domain {
+  id       String @id @default(cuid())
+  siteId   String
+  hostname String @unique
+
+  verified      Boolean   @default(false)
+  verifyToken   String
+  lastCheckedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+}
+
+enum AssetKind {
+  IMAGE
+  ANIMATED
+}
+
+model Asset {
+  id     String @id @default(cuid())
+  siteId String
+
+  /// Path under the assets volume, e.g. "<siteId>/<id>".
+  storageKey String
+  kind       AssetKind
+  mime       String
+  width      Int
+  height     Int
+  bytes      Int
+
+  /// Derived renditions: webp widths, and for ANIMATED the mp4/webp pair
+  /// plus a poster frame. Shape defined in src/lib/storage.ts.
+  variants Json
+
+  createdAt DateTime @default(now())
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+}

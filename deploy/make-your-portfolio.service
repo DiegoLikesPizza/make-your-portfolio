@@ -1,0 +1,34 @@
+# systemd unit for the Next.js server.
+#
+#   sudo cp deploy/make-your-portfolio.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now make-your-portfolio
+#
+# Caddy runs as its own service and proxies to 127.0.0.1:3000, so this process
+# never listens on a public interface.
+[Unit]
+Description=Make Your Portfolio
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=portfolio
+WorkingDirectory=/srv/make-your-portfolio
+EnvironmentFile=/srv/make-your-portfolio/.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node .next/standalone/server.js
+Restart=always
+RestartSec=5
+
+# The app only ever writes to the assets volume.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/make-your-portfolio/data
+
+[Install]
+WantedBy=multi-user.target

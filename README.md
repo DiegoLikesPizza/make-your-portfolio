@@ -1,36 +1,154 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Make Your Portfolio
 
-## Getting Started
+A hosted builder for **one-page portfolios**. Sign in, fill out a guided form, watch the page
+render live beside it, publish to `name.example.com`, `example.com/u/name`, or your own domain.
 
-First, run the development server:
+The full plan lives at `~/.claude/plans/i-want-you-to-jazzy-garden.md`.
+
+## The idea in one paragraph
+
+A theme is not a monolith here. It is split into three layers the user controls independently:
+
+- **Shell** — nav variant, container width, dividers, footer, background
+- **Sections** — an ordered list, each picking one of many layout variants
+- **Tokens** — radius, borders, shadow, density, fonts, palette, motion
+
+A "theme" is then just a **preset**: a tested bundle of the three that you load and then change
+anything in. `editorial` is the design system of `lfdiego.xyz`, ported as the reference target.
+
+The rule that makes the catalog growable: **every variant of a section type consumes the same
+data**, so switching Projects from `numbered-list` to `grid-3` to `table` never loses content.
+
+## Status
+
+| Step | State |
+|---|---|
+| 1. Skeleton (Next 16, Prisma, Caddy) | done |
+| 2. Auth (GitHub / Google / magic link) | **done** — magic links work with no SMTP in dev |
+| 3. Schema + render core | done — `/u/demo` renders the reference content |
+| 4. Editor | **done** — content, design, autosave, publish |
+| 5. Variant catalog | **done** — 52/52 section variants, 8 nav, 8 hero |
+| 6. Presets | **done** — 6 |
+| 7. Uploads | not started |
+| 8. Custom domains | **done** — add, verify, on-demand TLS gate |
+
+### Signing in
+
+Magic links work with **no mail server**: leave `EMAIL_SERVER_HOST` empty and the sign-in link is
+printed to the dev server console. Set it before deploying — in production a missing mail server is
+a hard error rather than a link in a log file.
+
+GitHub and Google buttons appear on `/signin` only once their credentials are in `.env`. A provider
+without credentials is omitted entirely rather than rendered and failing on click, so the button and
+the capability can never disagree.
+
+Sessions are database rows (revocable), and every site read or write goes through
+`requireSiteOwner` in `src/lib/auth.ts` — the one place that answers "is this yours?".
+
+## Running it
+
+No Docker required. `prisma dev` runs a real local Postgres as a plain background process:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db -- -d      # start local Postgres (detached); `npm run db ls` shows the URL
+npx prisma migrate dev
+npm run seed          # dev user + the demo site
+PORT=3100 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Port 3000 is often taken by another project, hence `PORT=3100` above.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Then open **http://localhost:3100** and sign up. `npm run seed` also creates a `demo` site you can
+view at `/u/demo`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm test              # host routing + subdomain rules
+npm run smoke         # end-to-end: sign-in -> edit -> autosave -> conflict -> publish
+npm run sweep         # every section type under every preset
+```
 
-## Learn More
+- `/` — placeholder marketing page
+- `/dashboard/<siteId>/edit` — the editor
+- `/u/demo` — the published portfolio, path-addressed
+- `curl -H 'Host: demo.example.localhost' localhost:3100` — the same site, host-addressed
 
-To learn more about Next.js, take a look at the following resources:
+Reaching the dev server from a phone on the same network works — visit `http://<your-lan-ip>:3100`.
+IP literals resolve to the app rather than being treated as a customer's custom domain.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Host routing lives in `src/proxy.ts`: `app.` and the bare domain are the dashboard, everything
+else rewrites to `/site/[host]`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Deployed at make-your-portfolio.lfdiego.xyz
 
-## Deploy on Vercel
+Running on the Hetzner box at `5.75.165.180`, which already hosts lfdiego.xyz, n8n and
+newqolhub behind **nginx + certbot + pm2 + Postgres 16**. The deployment follows that existing
+pattern rather than the Caddy setup originally planned — installing Caddy would have fought nginx
+for ports 80/443 and could have taken three live sites down.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| | |
+|---|---|
+| App | `/srv/websites/make-your-portfolio.lfdiego.xyz/app` |
+| Process | pm2 `make-your-portfolio`, `ecosystem.config.js`, bound to `127.0.0.1:3004` |
+| Node | `/opt/node22` (v22.14) — the system Node 20 is too old for `nanoid@6` |
+| Database | Postgres 16, database `portfolio`, role `portfolio` |
+| Web | `/etc/nginx/sites-available/make-your-portfolio.lfdiego.xyz` |
+| Assets | `/srv/websites/make-your-portfolio.lfdiego.xyz/data/assets` |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Redeploy:
+
+```bash
+cd /srv/websites/make-your-portfolio.lfdiego.xyz/app
+export PATH=/opt/node22/bin:$PATH
+npm install --no-audit && npx prisma migrate deploy && npm run build
+cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
+pm2 restart make-your-portfolio
+```
+
+**Two production gotchas, both already handled — do not undo them:**
+
+- `npm ci` fails on the server. The committed lockfile is generated on Windows and omits
+  Linux-only optional packages (`@emnapi/*`), so `npm install` is used there instead.
+- **The standalone server does not read the project `.env`.** It resolves env files relative to
+  `server.js` (`.next/standalone/`), not the project root. pm2 therefore runs `start.sh`, which
+  sources `.env` and execs the server. Without it Auth.js never sees `AUTH_URL`, falls back to the
+  server's own bind address, and every magic link points at `https://localhost:3004`.
+  `AUTH_URL` is mandatory in production for the same reason.
+
+The `caddy/` directory and `deploy/*.service` are kept for a clean-server install, but are **not**
+what runs in production.
+
+### Custom domains
+
+`/dashboard/<siteId>/domains` shows the exact DNS record to create, then verifies it with a real
+lookup, and the app already serves a verified custom domain correctly.
+
+**Not finished on the deployed box:** issuing the certificate. `/api/caddy/authorize` exists and is
+correct, but nginx has no equivalent of Caddy's on-demand TLS — it cannot obtain a certificate for
+a hostname it has never seen. The remaining work is a hook that runs `certbot --nginx -d <domain>`
+when a domain is verified. Until then a customer domain resolves and verifies but has no HTTPS.
+The endpoint is blocked at the nginx level (`deny all`) so it cannot be reached from outside.
+
+## Layout
+
+```
+src/
+  proxy.ts                 host-based routing
+  components/editor/       the editor: section list, forms, design panel, preview
+  app/site/[host]/         the public renderer (one route serves every site)
+  app/u/[subdomain]/       path-addressed alias
+  lib/schema/              portfolio.ts · sections.ts · tokens.ts · background.ts
+  render/                  Portfolio · Nav · Background · tokens.ts (tokens -> CSS vars)
+  variants/<type>/<id>.tsx the catalog, plus registry.ts
+  presets/                 tested bundles of shell + tokens + nav
+  lib/fixtures/diego.ts    lfdiego.xyz's content as a PortfolioDoc
+```
+
+## Notes
+
+- `npm audit` reports 4 high advisories, all inside the **Prisma CLI** (dev-only); `mysql2` is
+  unused with Postgres. No runtime dependency is affected.
+- lucide 1.x dropped brand icons for trademark reasons, so GitHub/LinkedIn/X/Instagram/Dribbble
+  marks are inlined in `src/render/primitives/LinkIcon.tsx`.
+- Font pairings reference `next/font` CSS variables, never family names — next/font emits a hashed
+  family, so naming a font directly silently falls back to system-ui.
