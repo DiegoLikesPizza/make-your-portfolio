@@ -1,6 +1,7 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import type { SectionProps } from "@/render/context";
+import { highlight } from "@/lib/text";
 
 export default function AboutCenteredNarrow({ section, index, ctx }: SectionProps<"about">) {
   const m = ctx.doc.design.tokens.motion;
@@ -15,7 +16,7 @@ export default function AboutCenteredNarrow({ section, index, ctx }: SectionProp
       </Reveal>
       <Reveal motionStyle={m} delay={0.08}>
         <p className="mt-10 font-[family-name:var(--font-heading)] text-2xl font-medium leading-snug text-[var(--foreground)] md:text-[1.75rem]">
-          {lead}
+          {highlight(lead)}
         </p>
       </Reveal>
       <Reveal motionStyle={m} delay={0.14}>

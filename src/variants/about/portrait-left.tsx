@@ -1,6 +1,7 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { asset, type SectionProps } from "@/render/context";
+import { highlight } from "@/lib/text";
 
 /** The only About layout that uses `imageAssetId`. */
 export default function AboutPortraitLeft({ section, index, ctx }: SectionProps<"about">) {
@@ -33,7 +34,7 @@ export default function AboutPortraitLeft({ section, index, ctx }: SectionProps<
         </Reveal>
         <Reveal motionStyle={m} delay={0.08}>
           <p className="mt-8 font-[family-name:var(--font-heading)] text-2xl font-medium leading-snug text-[var(--foreground)] md:text-[1.75rem]">
-            {lead}
+            {highlight(lead)}
           </p>
         </Reveal>
         <Reveal motionStyle={m} delay={0.14}>

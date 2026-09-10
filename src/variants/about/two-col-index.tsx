@@ -1,6 +1,7 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import type { SectionProps } from "@/render/context";
+import { highlight } from "@/lib/text";
 
 /** lfdiego.xyz's About: index label and monogram left, bio right. */
 export default function AboutTwoColIndex({ section, index, ctx }: SectionProps<"about">) {
@@ -28,7 +29,7 @@ export default function AboutTwoColIndex({ section, index, ctx }: SectionProps<"
       <div className="lg:col-span-8">
         <Reveal motionStyle={m} delay={0.08}>
           <p className="max-w-[46ch] font-[family-name:var(--font-heading)] text-2xl font-medium leading-snug tracking-[-0.01em] text-[var(--foreground)] md:text-[1.75rem]">
-            {lead}
+            {highlight(lead)}
           </p>
         </Reveal>
         <Reveal motionStyle={m} delay={0.14}>
