@@ -27,6 +27,12 @@ so publishing is an atomic copy, adding a layout never touches a migration, and
 the editor's live preview and the published page render through the same
 components.
 
+## The public demos
+
+`npm run seed:demos` publishes one example portfolio per preset — `/u/editorial`
+through `/u/brutalist` — which the homepage and `/layouts` link to. See
+[development.md](development.md#the-public-demos).
+
 ## What is not built
 
 **Uploads.** `Asset` exists in the schema and `assetId` fields exist on gallery

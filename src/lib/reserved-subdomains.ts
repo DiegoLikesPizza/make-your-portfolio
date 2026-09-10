@@ -16,6 +16,10 @@ const RESERVED = new Set([
   "dashboard", "settings", "profile", "user", "users", "me", "my", "new",
   "test", "testing", "dev", "staging", "preview", "sandbox", "beta",
   "portfolio", "site", "sites", "page", "pages", "host", "hosting",
+  // The public demo portfolios are published under the preset names, so those
+  // handles belong to us — a user claiming /u/editorial would take a page the
+  // marketing site links to.
+  "editorial", "minimal", "serif", "gradient", "terminal", "brutalist",
 ]);
 
 export type SubdomainError = "too-short" | "too-long" | "invalid" | "reserved";

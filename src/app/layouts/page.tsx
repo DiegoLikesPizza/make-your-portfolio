@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalog";
 import { Chip } from "@/components/browser/Chip";
 import { HeroPreviews, NavPreviews, SectionPreviews } from "@/components/browser/Previews";
+import { publishedDemoHandles } from "@/lib/sites";
 
 export const metadata: Metadata = {
   title: "Layouts",
@@ -31,6 +32,7 @@ function href(p: Params) {
 
 export default async function LayoutsPage({ searchParams }: { searchParams: Promise<Params> }) {
   const sp = await searchParams;
+  const demos = await publishedDemoHandles();
 
   const preset = PRESETS[sp.preset ?? ""] ? (sp.preset as string) : "editorial";
   const view: View = sp.view === "hero" || sp.view === "nav" ? sp.view : "sections";
@@ -76,12 +78,22 @@ export default async function LayoutsPage({ searchParams }: { searchParams: Prom
           ))}
         </nav>
 
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Preset">
+        <div className="mt-3 flex flex-wrap items-center gap-2" aria-label="Preset">
           {Object.entries(PRESETS).map(([id, p]) => (
             <Chip key={id} href={href({ view, type, preset: id })} active={preset === id}>
               {p.label}
             </Chip>
           ))}
+          {/* Previews show one section at a time; this is the whole thing, on a
+              real published page. */}
+          {demos.includes(preset) && (
+            <a
+              href={`/u/${preset}`}
+              className="ml-1 text-sm font-medium text-neutral-900 underline-offset-4 hover:underline dark:text-white"
+            >
+              See {PRESETS[preset].label} as a finished page &rarr;
+            </a>
+          )}
         </div>
 
         {view === "sections" && (

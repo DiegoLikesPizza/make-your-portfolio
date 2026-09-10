@@ -25,6 +25,33 @@ GitHub and Google buttons appear on `/signin` only once their credentials are in
 The seed creates `dev@example.localhost` and a site at `/demo`, seeded as a
 **draft only**, so the first thing you exercise is the publish path.
 
+### The public demos
+
+```bash
+npm run seed:demos
+```
+
+Publishes one example portfolio per preset at `/u/editorial`, `/u/minimal`,
+`/u/serif`, `/u/gradient`, `/u/terminal` and `/u/brutalist`, and the marketing
+pages link to whichever of them exist. Safe to re-run — it is also how you
+*update* the demos after changing a preset or a layout.
+
+They belong to their own account (`demos@invalid.local`, no sign-in method) so
+that deleting a real user can't cascade them away and nobody can edit them by
+signing in. The handles are reserved in `reserved-subdomains.ts`, so a user
+can't claim `/u/editorial` out from under the marketing site.
+
+Content lives in [`src/lib/fixtures/demo.ts`](../src/lib/fixtures/demo.ts) — an
+invented studio, deliberately not the reference document, because publishing six
+copies of a real CV under six handles would put a real person's details on pages
+nobody claims to own. Each preset gets its own hero and its own layout per
+section, so the six read as six different sites rather than one site in six
+colours.
+
+The seed writes straight to the database, so it cannot drop a cache tag. A
+running app picks the demos up within five minutes; restart it if you're
+impatient.
+
 ## The checks
 
 | | |
