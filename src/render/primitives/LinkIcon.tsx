@@ -22,7 +22,17 @@ type IconProps = SVGProps<SVGSVGElement> & { strokeWidth?: number };
 const brand = (path: string): ComponentType<IconProps> =>
   function BrandIcon({ className, ...rest }: IconProps) {
     return (
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className} {...rest}>
+      // width/height match lucide's defaults: without them an <svg> with no
+      // intrinsic size falls back to 300x150 wherever the class doesn't set one.
+      <svg
+        viewBox="0 0 24 24"
+        width="24"
+        height="24"
+        fill="currentColor"
+        aria-hidden
+        className={className}
+        {...rest}
+      >
         <path d={path} />
       </svg>
     );
@@ -31,8 +41,10 @@ const brand = (path: string): ComponentType<IconProps> =>
 const Github = brand(
   "M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.1 4.9 18.1 5.2 18.1 5.2c.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3Z",
 );
+// The "n" limb used to run to x=26 inside a 24-wide viewBox, so its right edge
+// was clipped off — the reported bug. Every subpath below stays inside 0..24.
 const Linkedin = brand(
-  "M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5ZM2.4 21.5h5.2V9.3H2.4v12.2Zm7.4-12.2h5v1.7h.1a5.5 5.5 0 0 1 4.9-2.7c5.2 0 6.2 3.4 6.2 7.9v7.3h-5.2v-6.5c0-1.5 0-3.5-2.2-3.5s-2.5 1.7-2.5 3.4v6.6H9.8V9.3Z",
+  "M4.65 2.5a2.35 2.35 0 1 1 0 4.7 2.35 2.35 0 0 1 0-4.7ZM2.5 8.9h4.3v12.6H2.5V8.9Zm7 0h4.1v1.72h.06a4.5 4.5 0 0 1 4.05-2.22c4.33 0 5.13 2.85 5.13 6.56v6.54h-4.28v-5.8c0-1.38-.03-3.16-1.93-3.16-1.93 0-2.23 1.5-2.23 3.06v5.9H9.5V8.9Z",
 );
 const XMark = brand(
   "M18.9 2H22l-7 8 8.3 12h-6.5l-5-7.3L5.9 22H2.8l7.5-8.6L2.3 2h6.6l4.6 6.7L18.9 2Zm-1.1 18h1.7L7.3 3.8H5.5L17.8 20Z",
