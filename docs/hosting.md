@@ -77,7 +77,9 @@ the `Host` header.
 **nginx** (what the deployed box runs) cannot issue for a hostname it has never
 seen, so the app does it explicitly:
 
-1. `00-customer-domains` is the catch-all `default_server`. Without it an
+1. [`deploy/nginx-customer-domains.conf`](../deploy/nginx-customer-domains.conf),
+   installed as `/etc/nginx/sites-available/00-customer-domains`, is the
+   catch-all `default_server`. Without it an
    unmatched Host falls through to whichever block nginx loaded first — which
    served an unrelated site's content on customers' domains, behind a
    certificate warning. It proxies everything to the app, and serves
