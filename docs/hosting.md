@@ -83,6 +83,10 @@ it there too. See [architecture.md](architecture.md#caching-and-the-rule-that-fo
 
 ## Deploying
 
+- The redeploy recipe is in the root [README](../README.md#deployed-at-make-your-portfoliolfdiegoxyz).
+  `npx prisma generate` is a required step in it: `src/generated/prisma` is
+  gitignored, so a pull never brings a client that knows about a new model, and
+  the build fails type-checking until it is regenerated.
 - [`deploy/`](../deploy) has a systemd unit, a pm2 config and a start script.
 - [`Dockerfile`](../Dockerfile) and [`docker-compose.yml`](../docker-compose.yml)
   are there if you'd rather.
