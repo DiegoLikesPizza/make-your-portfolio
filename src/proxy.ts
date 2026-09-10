@@ -19,11 +19,19 @@ export default function proxy(request: NextRequest) {
   return NextResponse.rewrite(url);
 }
 
+// Everything except Next internals, the API, and paths that look like a file.
+// API routes are excluded on purpose: /api/caddy/authorize is called with the
+// custom domain as a query param, not as the Host.
+//
+// The backslash in `\\.` has to be doubled. Written `"\."`, JavaScript drops
+// the backslash it doesn't recognise and the regex receives a bare `.`, so the
+// last alternative became `.*..*` — "any two characters" — and the negative
+// lookahead then rejected every path of two or more characters. The proxy only
+// ever ran on `/`, which meant every other path on a customer's domain served
+// the dashboard instead of their site.
+//
+// The literal stays inline: Next reads `config.matcher` by static analysis at
+// build time and cannot follow a reference.
 export const config = {
-  matcher: [
-    // Everything except Next internals, the API, and static files. API routes
-    // are excluded on purpose: /api/caddy/authorize is called with the
-    // custom domain as a query param, not as the Host.
-    "/((?!api/|_next/|favicon.ico|.*\..*).*)",
-  ],
+  matcher: ["/((?!api/|_next/|favicon.ico|.*\\..*).*)"],
 };

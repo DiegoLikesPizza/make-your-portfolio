@@ -55,6 +55,18 @@ export function getPublishedSite(host: string): Promise<PublishedSite | null> {
   })();
 }
 
+/**
+ * Drop whatever is cached for one hostname.
+ *
+ * Needed on every change to a Domain row, not just on publish. `loadByHost`
+ * caches its *misses* too, so the natural sequence — connect the domain, visit
+ * it to see whether it works yet, then verify — poisons the cache with a null
+ * that nothing would ever clear, and the domain 404s forever afterwards.
+ */
+export async function revalidateHost(hostname: string) {
+  revalidateTag(`site:host:${hostname}`, { expire: 0 });
+}
+
 /** Called after publishing so every route serving this site picks it up. */
 export async function revalidateSite(handle: string, hostnames: string[]) {
   const tags = [

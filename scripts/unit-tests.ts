@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { resolveHost, normalizeHost } from "../src/lib/hosts";
 import { validateSubdomain, normalizeSubdomain } from "../src/lib/reserved-subdomains";
 
@@ -86,4 +87,55 @@ if (normalizeSubdomain("  Diego Göttler! ") !== "diego-g-ttler") {
 }
 
 console.log(`\n${subCases.length + 1 - subFailures}/${subCases.length + 1} subdomain cases passed`);
-process.exit(failures + subFailures ? 1 : 0);
+
+/**
+ * Which paths the proxy actually runs on.
+ *
+ * This shipped broken and silently: an under-escaped `\.` in the matcher left
+ * the regex reading `.*..*`, which rejects every path of two or more
+ * characters, so the proxy only ever ran on `/` — and a customer's domain
+ * served the dashboard on every other path. A regex that wrong is invisible in
+ * review and obvious in a table.
+ */
+// Read the literal out of the source rather than importing the module: proxy.ts
+// pulls in next/server, and what is under test is the string *as written* —
+// JSON.parse applies the same escape rules the JavaScript parser does, which is
+// exactly the step the original bug fell through.
+const proxySource = readFileSync("src/proxy.ts", "utf8");
+const literal = proxySource.match(/matcher: \[\s*("(?:[^"\\]|\\.)*")/)?.[1];
+if (!literal) throw new Error("could not find the proxy matcher literal in src/proxy.ts");
+
+let pathFailures = 0;
+let matcher: RegExp | null = null;
+try {
+  matcher = new RegExp(`^${JSON.parse(literal) as string}$`);
+} catch {
+  // JSON rejects escapes it doesn't know, which is what the under-escaped
+  // version was — so this branch catches the original bug by itself.
+  pathFailures += 1;
+  console.log(`FAIL  proxy matcher has an escape JavaScript would silently drop: ${literal}`);
+}
+const pathCases: [string, boolean][] = [
+  ["/", true],
+  ["/about", true],
+  ["/u/demo", true],
+  ["/dashboard/abc/edit", true],
+  // Excluded: Next internals, the API, and anything that looks like a file.
+  ["/api/caddy/authorize", false],
+  ["/_next/static/chunk.js", false],
+  ["/favicon.ico", false],
+  ["/logo.png", false],
+];
+
+for (const [path, expected] of matcher ? pathCases : []) {
+  const actual = matcher!.test(path);
+  const ok = actual === expected;
+  if (!ok) pathFailures += 1;
+  console.log(
+    `${ok ? "PASS " : "FAIL "}proxy ${path.padEnd(26)} -> ${actual ? "runs" : "skipped"}` +
+      `${ok ? "" : `  (expected ${expected ? "runs" : "skipped"})`}`,
+  );
+}
+
+console.log(`\n${pathCases.length - pathFailures}/${pathCases.length} proxy path cases passed`);
+process.exit(failures + subFailures + pathFailures ? 1 : 0);
