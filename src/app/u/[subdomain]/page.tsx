@@ -12,5 +12,5 @@ export default async function UserSitePage({ params }: { params: Promise<{ subdo
   const { subdomain } = await params;
   const site = await getPublishedSiteByHandle(subdomain);
   if (!site) notFound();
-  return <Portfolio ctx={{ doc: site.doc, assets: site.assets }} />;
+  return <Portfolio ctx={{ doc: site.doc, assets: site.assets }} analyticsSiteId={site.id} />;
 }

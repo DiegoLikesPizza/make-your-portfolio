@@ -92,8 +92,33 @@ model Site {
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   domains Domain[]
   assets  Asset[]
+  views   SiteView[]
 
   @@index([userId])
+}
+
+/// One day of traffic for one site, per referring source.
+///
+/// Aggregated on write rather than stored per visit: no row per visitor, no IP,
+/// no cookie and no user agent, so there is nothing here to leak, nothing to
+/// ask consent for and nothing to prune. The cost is that this can answer "how
+/// many, from where, on which day" and nothing finer.
+model SiteView {
+  id     String @id @default(cuid())
+  siteId String
+
+  /// UTC midnight of the day being counted.
+  day DateTime @db.Date
+
+  /// Referring hostname, or "" for a direct visit.
+  source String
+
+  count Int @default(0)
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, day, source])
+  @@index([siteId, day])
 }
 
 /// A custom hostname. Caddy's on-demand TLS asks /api/caddy/authorize before

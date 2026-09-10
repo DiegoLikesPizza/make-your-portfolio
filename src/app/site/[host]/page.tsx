@@ -40,5 +40,5 @@ export default async function SitePage({ params }: Props) {
   // a draft must never be reachable on a public hostname.
   if (!site) notFound();
 
-  return <Portfolio ctx={{ doc: site.doc, assets: site.assets }} />;
+  return <Portfolio ctx={{ doc: site.doc, assets: site.assets }} analyticsSiteId={site.id} />;
 }

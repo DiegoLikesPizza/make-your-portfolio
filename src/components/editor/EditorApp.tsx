@@ -109,10 +109,16 @@ export function EditorApp({
             ))}
           </div>
           <a
-            href={`/dashboard/${siteId}/domains`}
+            href={`/dashboard/${siteId}/analytics`}
             className="text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
           >
-            Domains
+            Analytics
+          </a>
+          <a
+            href={`/dashboard/${siteId}/settings`}
+            className="text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
+          >
+            Settings
           </a>
           {published && (
             <a

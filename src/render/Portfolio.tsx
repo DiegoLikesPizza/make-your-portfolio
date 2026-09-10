@@ -4,6 +4,7 @@ import { Hero } from "./hero/Hero";
 import { Background } from "./Background";
 import { SectionFrame } from "./primitives/Section";
 import { SchemeToggle } from "./primitives/SchemeToggle";
+import { ViewBeacon } from "./primitives/ViewBeacon";
 import { tokensToCss } from "./tokens";
 import { isBleed, resolveVariant } from "@/variants/registry";
 import type { RenderCtx } from "./context";
@@ -15,7 +16,18 @@ import { cn } from "@/lib/utils";
  * Identical in the public route and the editor preview — that is the only
  * reason "what you see is what publishes" is actually true rather than a claim.
  */
-export function Portfolio({ ctx }: { ctx: RenderCtx }) {
+export function Portfolio({
+  ctx,
+  analyticsSiteId,
+}: {
+  ctx: RenderCtx;
+  /**
+   * Set on the public routes only. The editor preview renders the same tree,
+   * and counting the author's own keystrokes as traffic would make the number
+   * meaningless.
+   */
+  analyticsSiteId?: string;
+}) {
   const { doc } = ctx;
   const { design, profile } = doc;
 
@@ -41,6 +53,8 @@ export function Portfolio({ ctx }: { ctx: RenderCtx }) {
       {/* Tokens are emitted as a scoped stylesheet rather than inline styles so
           that :hover, media queries and the dark-scheme blocks all work. */}
       <style dangerouslySetInnerHTML={{ __html: tokensToCss(design.tokens, ".portfolio") }} />
+
+      {analyticsSiteId && <ViewBeacon siteId={analyticsSiteId} />}
 
       <Background config={design.background} ctx={ctx} />
 
