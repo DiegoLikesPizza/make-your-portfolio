@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
 import { plain } from "@/lib/text";
 import { DEMO_HANDLES, demoDoc } from "@/lib/fixtures/demo";
+import { resolveDynamic } from "@/lib/dynamic";
 
 /**
  * The public demo portfolios, one per preset.
@@ -21,7 +22,9 @@ export function generateStaticParams() {
 }
 
 function docFor(preset: string) {
-  return DEMO_HANDLES.includes(preset) ? demoDoc(preset) : null;
+  // Prerendered, so a dynamic value here is as of the last build rather than
+  // of this request. The demo fixture keeps to values that don't change daily.
+  return DEMO_HANDLES.includes(preset) ? resolveDynamic(demoDoc(preset)) : null;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

@@ -104,6 +104,41 @@ published page and the OG description all read.
 Body copy deliberately doesn't get this. Emphasis scattered through a paragraph
 is how a portfolio starts to look like a ransom note.
 
+### Dynamic values
+
+Any text in a document may contain `{{...}}` placeholders, worked out when the
+page renders rather than when it was written. The `{ }` button beside the
+emphasis toolbar inserts one and selects the example argument, which is the part
+you replace.
+
+| Placeholder | Renders as |
+|---|---|
+| `{{date}}` | `10 Sep 2026` — also `format=long`, `iso`, `year`, `month`, `weekday` |
+| `{{time}}` | `14:32 UTC` |
+| `{{years since=2019-01-01}}` | `7` — also `months`, `days`, and `until=` instead of `since=` |
+| `{{age since=1998-04-02}}` | `28` |
+| `{{count of=projects}}` | entries in the visible sections of that type |
+
+The point is the strings that go stale silently. "Seven years building X" is
+wrong a year after it was typed and nobody edits a portfolio to fix it. Counts
+drift the same way against a Projects section that has since grown.
+
+Elapsed time is whole units by the calendar, never by division: the answer is
+"has the anniversary happened yet", so 365-day years and 29 February both come
+out right. Everything formats in UTC, for the reason in
+[`dates.ts`](../src/lib/dates.ts) — a value that reads the runtime's time zone
+renders differently on the server and in the browser, and the preview renders in
+both.
+
+An unknown name, a missing argument or a date that isn't one leaves the
+placeholder standing on the page. Rendering nothing would make a typo look like
+an empty field; seeing `{{yaers since=2019}}` is how you find out.
+
+The vocabulary is closed on purpose — pure functions of the document and the
+clock. A placeholder that could name a URL would turn rendering somebody's
+portfolio into a request our server makes on their behalf.
+See [`src/lib/dynamic.ts`](../src/lib/dynamic.ts).
+
 ### List fields
 
 "Tech", "Skills" and "Highlights" edit arrays through a text field. They keep

@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { resolveHost, normalizeHost } from "../src/lib/hosts";
 import { validateSubdomain, normalizeSubdomain } from "../src/lib/reserved-subdomains";
+import { resolveText, resolveDynamic } from "../src/lib/dynamic";
+import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
  * Unit tests for the two functions that decide routing and identity.
@@ -143,4 +145,67 @@ for (const [path, expected] of matcher ? pathCases : []) {
 }
 
 console.log(`\n${pathCases.length - pathFailures}/${pathCases.length} proxy path cases passed`);
-process.exit(failures + subFailures + pathFailures ? 1 : 0);
+// ------------------------------------------------------- dynamic values
+//
+// A fixed clock, because the whole point of these is that they read one.
+const NOW = new Date("2026-09-10T14:32:00Z");
+
+const doc = {
+  sections: [
+    { type: "projects", hidden: false, data: { items: [{}, {}, {}] } },
+    // A second visible section of the same type adds to the count; a hidden
+    // one does not, because a hidden one is not on the page.
+    { type: "projects", hidden: false, data: { items: [{}] } },
+    { type: "projects", hidden: true, data: { items: [{}, {}] } },
+    { type: "skills", hidden: false, data: { groups: [{ items: [{}, {}] }, { items: [{}] }] } },
+  ],
+} as unknown as PortfolioDoc;
+
+const dynamicCases: [string, string][] = [
+  ["{{date}}", "10 Sep 2026"],
+  ["{{date format=long}}", "10 September 2026"],
+  ["{{date format=iso}}", "2026-09-10"],
+  ["{{date format=year}}", "2026"],
+  ["{{date format=weekday}}", "Thursday"],
+  ["{{time}}", "14:32 UTC"],
+  // Whole units only, and by the calendar: the 2019-01 anniversary has passed
+  // this year, the 2019-12 one has not.
+  ["{{years since=2019-01-01}}", "7"],
+  ["{{years since=2019-12-01}}", "6"],
+  ["{{months since=2026-08-11}}", "0"],
+  ["{{days until=2026-09-20}}", "9"],
+  ["{{age since=1998-04-02}}", "28"],
+  // A date in the wrong direction is zero, not a negative.
+  ["{{years since=2030-01-01}}", "0"],
+  ["{{count of=projects}}", "4"],
+  ["{{count of=skills}}", "3"],
+  ["Working since {{date format=year}}, {{count of=projects}} shipped.", "Working since 2026, 4 shipped."],
+  // Left standing: an unknown name, a missing argument, a section type with
+  // nothing to count, a date that isn't one, and both endpoints at once.
+  ["{{yaers since=2019-01-01}}", "{{yaers since=2019-01-01}}"],
+  ["{{years}}", "{{years}}"],
+  ["{{years since=last-tuesday}}", "{{years since=last-tuesday}}"],
+  ["{{years since=2019-01-01 until=2030-01-01}}", "{{years since=2019-01-01 until=2030-01-01}}"],
+  ["{{count of=gallery}}", "{{count of=gallery}}"],
+  ["{{date format=fortnight}}", "{{date format=fortnight}}"],
+  // Not a placeholder at all.
+  ["100% of {{ nothing", "100% of {{ nothing"],
+];
+
+let dynFailures = 0;
+for (const [input, expected] of dynamicCases) {
+  const actual = resolveText(input, { doc, now: NOW });
+  const ok = actual === expected;
+  if (!ok) dynFailures += 1;
+  console.log(
+    `${ok ? "PASS " : "FAIL "}dynamic ${input.padEnd(46)} -> ${actual}${ok ? "" : `  (expected ${expected})`}`,
+  );
+}
+
+// A document with no placeholders is handed back untouched rather than cloned.
+const untouched = resolveDynamic(doc, NOW) === doc;
+if (!untouched) dynFailures += 1;
+console.log(`${untouched ? "PASS " : "FAIL "}dynamic a document without placeholders is not cloned`);
+
+console.log(`\n${dynamicCases.length + 1 - dynFailures}/${dynamicCases.length + 1} dynamic value cases passed`);
+process.exit(failures + subFailures + pathFailures + dynFailures ? 1 : 0);

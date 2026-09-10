@@ -33,6 +33,13 @@ One example portfolio per preset lives at `/d/editorial` through
 `/d/brutalist`, rendered straight from the fixture — nothing to seed. See
 [development.md](development.md#the-public-demos).
 
+## Dynamic values
+
+Any text may contain `{{date}}`, `{{years since=2019-01-01}}`,
+`{{count of=projects}}` and a few others, resolved at render time from the
+document and the clock and nothing else. See
+[editor.md](editor.md#dynamic-values).
+
 ## What is not built
 
 **Uploads.** `Asset` exists in the schema and `assetId` fields exist on gallery
