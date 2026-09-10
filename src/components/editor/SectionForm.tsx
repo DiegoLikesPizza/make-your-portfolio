@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import type { Section } from "@/lib/schema/sections";
 import { Select, TextArea, TextInput } from "./fields";
 import { ListEditor } from "./ListEditor";
+import { CommaListInput, keepIds, LineListInput } from "./TokenField";
 import { ICON_OPTIONS, STATUS_OPTIONS } from "./options";
 
 /**
@@ -90,12 +91,7 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
             <>
               <TextInput label="Title" value={p.title} onChange={(title) => update({ title })} />
               <TextArea label="Summary" rows={3} value={p.summary} onChange={(summary) => update({ summary })} />
-              <TextInput
-                label="Tech"
-                value={p.tech.join(", ")}
-                hint="Comma separated."
-                onChange={(v) => update({ tech: v.split(",").map((t) => t.trim()).filter(Boolean) })}
-              />
+              <CommaListInput label="Tech" value={p.tech} onChange={(tech) => update({ tech })} />
               <TextInput label="Year" value={p.year ?? ""} onChange={(year) => update({ year })} />
               <Select label="Status" value={p.status} options={STATUS_OPTIONS} onChange={(status) => update({ status })} />
               <TextInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
@@ -146,12 +142,11 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
           render={(g, update) => (
             <>
               <TextInput label="Group label" value={g.label} onChange={(label) => update({ label })} />
-              <TextInput
+              <CommaListInput
                 label="Skills"
-                value={g.items.map((i) => i.label).join(", ")}
-                hint="Comma separated."
-                onChange={(v) =>
-                  update({ items: v.split(",").map((t) => t.trim()).filter(Boolean).map((label) => ({ id: nanoid(8), label })) })
+                value={g.items.map((i) => i.label)}
+                onChange={(labels) =>
+                  update({ items: keepIds(g.items, labels, (label, id) => ({ id, label }), () => nanoid(8)) })
                 }
               />
             </>
@@ -187,15 +182,12 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
               <TextInput label="Start" value={j.start} onChange={(start) => update({ start })} />
               <TextInput label="End" value={j.end ?? ""} hint="Leave blank for Present." onChange={(end) => update({ end })} />
               <TextArea label="Summary" rows={3} value={j.summary ?? ""} onChange={(summary) => update({ summary })} />
-              <TextArea
+              <LineListInput
                 label="Highlights"
-                rows={4}
-                value={j.bullets.map((b) => b.text).join("\n")}
+                value={j.bullets.map((b) => b.text)}
                 hint="One per line. Not shown by the Table layout."
-                onChange={(v) =>
-                  update({
-                    bullets: v.split("\n").map((t) => t.trim()).filter(Boolean).map((text) => ({ id: nanoid(8), text })),
-                  })
+                onChange={(lines) =>
+                  update({ bullets: keepIds(j.bullets, lines, (text, id) => ({ id, text }), () => nanoid(8)) })
                 }
               />
             </>
