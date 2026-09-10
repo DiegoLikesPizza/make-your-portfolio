@@ -1,4 +1,5 @@
 import { Nav, type NavItem } from "./Nav";
+import { isSideNav, railOffset } from "./nav-layout";
 import { Hero } from "./hero/Hero";
 import { Background } from "./Background";
 import { SectionFrame } from "./primitives/Section";
@@ -23,7 +24,13 @@ export function Portfolio({ ctx }: { ctx: RenderCtx }) {
     .filter((s) => s.title)
     .map((s) => ({ slug: s.slug, label: s.title as string }));
 
-  const sideNav = design.nav.variant === "side-left-rail";
+  // Only the full-height rail takes width away from the page; the pill and the
+  // dot rail float over it.
+  const railPad = railOffset(design.nav);
+  // The floating scheme toggle lives in the top-right corner, which is exactly
+  // where a right-hand nav is. Send it to the other corner rather than letting
+  // the two overlap.
+  const navOnRight = isSideNav(design.nav.variant) && design.nav.side === "right";
 
   return (
     <div
@@ -40,12 +47,12 @@ export function Portfolio({ ctx }: { ctx: RenderCtx }) {
       <Nav config={design.nav} items={navItems} monogram={profile.initials ?? profile.name.slice(0, 2)} />
 
       {design.nav.showThemeToggle && design.colorScheme === "auto" && (
-        <div className="fixed right-6 top-4 z-[60]">
+        <div className={cn("fixed top-4 z-[60]", navOnRight ? "left-6" : "right-6")}>
           <SchemeToggle />
         </div>
       )}
 
-      <main className={cn("relative", sideNav && "lg:pl-52")}>
+      <main className={cn("relative", railPad)}>
         <Hero ctx={ctx} />
 
         {visible.map((section, i) => {
@@ -67,7 +74,7 @@ export function Portfolio({ ctx }: { ctx: RenderCtx }) {
 
       {design.footer !== "none" && (
         <footer
-          className={cn("relative border-t border-[var(--border-color)] py-10", sideNav && "lg:pl-52")}
+          className={cn("relative border-t border-[var(--border-color)] py-10", railPad)}
         >
           <div className="mx-auto flex flex-wrap items-center justify-between gap-4 px-6 md:px-10" style={{ maxWidth: "var(--container)" }}>
             <span className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.12em] text-[var(--foreground-subtle)]">

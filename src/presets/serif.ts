@@ -20,7 +20,16 @@ export const serif: Design = {
     linkHover: "underline",
     motion: "fade",
   },
-  nav: { variant: "dot-rail", labelStyle: "dot", showLogo: false, showThemeToggle: true, blurOnScroll: false },
+  // Dots on the right, opposite where a rail would sit.
+  nav: {
+    variant: "dot-rail",
+    labelStyle: "dot",
+    showLogo: false,
+    showThemeToggle: true,
+    blurOnScroll: false,
+    side: "right",
+    mobileBehavior: "hamburger",
+  },
   background: { light: { kind: "none" }, dark: { kind: "none" }, sameInBoth: true },
   colorScheme: "auto",
   footer: "minimal",
