@@ -70,9 +70,10 @@ const subCases: [string, string | null][] = [
   ["api", "reserved"],
   ["www", "reserved"],
   ["billing", "reserved"],
-  // The public demo portfolios live at /u/<preset>, so those handles are ours.
-  ["editorial", "reserved"],
-  ["brutalist", "reserved"],
+  // The public demos moved to /d/<preset>, so the preset names are claimable
+  // again — nothing in the product depends on owning them.
+  ["editorial", null],
+  ["brutalist", null],
   ["a".repeat(64), "too-long"],
 ];
 
@@ -122,6 +123,7 @@ const pathCases: [string, boolean][] = [
   ["/", true],
   ["/about", true],
   ["/u/demo", true],
+  ["/d/editorial", true],
   ["/dashboard/abc/edit", true],
   // Excluded: Next internals, the API, and anything that looks like a file.
   ["/api/caddy/authorize", false],

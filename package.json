@@ -8,7 +8,6 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx --env-file=.env prisma/seed.ts",
-    "seed:demos": "tsx --env-file=.env prisma/seed-demos.ts",
     "db": "prisma dev -n portfolio",
     "smoke": "tsx --env-file=.env scripts/smoke.ts",
     "coverage": "tsx scripts/coverage.ts",

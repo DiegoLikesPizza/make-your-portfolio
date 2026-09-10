@@ -27,19 +27,26 @@ The seed creates `dev@example.localhost` and a site at `/demo`, seeded as a
 
 ### The public demos
 
-```bash
-npm run seed:demos
+One example portfolio per preset at `/d/editorial`, `/d/minimal`, `/d/serif`,
+`/d/gradient`, `/d/terminal` and `/d/brutalist`. The homepage and `/layouts`
+link to them.
+
+Nothing to seed: [`src/app/d/[preset]/page.tsx`](../src/app/d/%5Bpreset%5D/page.tsx)
+renders the fixture directly, so a demo is always current with the preset it
+shows and a fresh clone has working demos before the database has a single row.
+
+They used to be seeded site rows at `/u/<preset>`, which cost six reserved
+handles — a user could not claim `editorial` because the marketing site linked
+to it — and left the demos stale until someone re-ran the seed. Their own path
+namespace costs neither.
+
+A database seeded before that change still has those six site rows. They are
+harmless — `editorial` simply reads as a taken handle — but deleting them hands
+the names back:
+
+```sql
+DELETE FROM "Site" WHERE "userId" = (SELECT id FROM "User" WHERE email = 'demos@invalid.local');
 ```
-
-Publishes one example portfolio per preset at `/u/editorial`, `/u/minimal`,
-`/u/serif`, `/u/gradient`, `/u/terminal` and `/u/brutalist`, and the marketing
-pages link to whichever of them exist. Safe to re-run — it is also how you
-*update* the demos after changing a preset or a layout.
-
-They belong to their own account (`demos@invalid.local`, no sign-in method) so
-that deleting a real user can't cascade them away and nobody can edit them by
-signing in. The handles are reserved in `reserved-subdomains.ts`, so a user
-can't claim `/u/editorial` out from under the marketing site.
 
 Content lives in [`src/lib/fixtures/demo.ts`](../src/lib/fixtures/demo.ts) — an
 invented studio, deliberately not the reference document, because publishing six
@@ -47,10 +54,6 @@ copies of a real CV under six handles would put a real person's details on pages
 nobody claims to own. Each preset gets its own hero and its own layout per
 section, so the six read as six different sites rather than one site in six
 colours.
-
-The seed writes straight to the database, so it cannot drop a cache tag. A
-running app picks the demos up within five minutes; restart it if you're
-impatient.
 
 ## The checks
 

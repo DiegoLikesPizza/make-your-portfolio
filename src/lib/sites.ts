@@ -4,7 +4,6 @@ import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import { migrate } from "@/lib/schema/portfolio";
 import type { AssetMap } from "@/render/context";
 import { resolveHost, SITES_ON_SUBDOMAINS, APP_DOMAIN } from "@/lib/hosts";
-import { DEMO_HANDLES } from "@/lib/fixtures/demo";
 
 /** Loading and publishing sites. */
 
@@ -54,31 +53,6 @@ export function getPublishedSite(host: string): Promise<PublishedSite | null> {
   return unstable_cache(() => loadByHost(host), ["site-host", host], {
     tags: [`site:host:${host}`],
   })();
-}
-
-/**
- * Which demo portfolios are actually published.
- *
- * The marketing pages link to them, and a fresh install has not run
- * `npm run seed:demos` — so the links are built from what exists rather than
- * from the preset list, and a missing demo is a missing link rather than a 404.
- *
- * Time-based rather than tag-based on purpose: the demo seed writes straight to
- * the database, outside the app, so it cannot drop a cache tag. Five minutes is
- * how long a fresh seed takes to show up, and demos change about once a year.
- */
-export function publishedDemoHandles(): Promise<string[]> {
-  return unstable_cache(
-    async () => {
-      const rows = await db.site.findMany({
-        where: { subdomain: { in: DEMO_HANDLES }, publishedAt: { not: null } },
-        select: { subdomain: true },
-      });
-      return rows.map((r) => r.subdomain);
-    },
-    ["demo-handles"],
-    { revalidate: 300 },
-  )();
 }
 
 /**
