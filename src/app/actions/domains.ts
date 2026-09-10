@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireSiteOwner } from "@/lib/auth";
 import { normalizeHost, APP_DOMAIN } from "@/lib/hosts";
 import { checkDomain } from "@/lib/dns";
+import { revalidateHost } from "@/lib/sites";
 
 export type DomainState = { error?: string; ok?: string };
 
@@ -34,6 +35,10 @@ export async function addDomain(siteId: string, _prev: DomainState, formData: Fo
     data: { siteId, hostname, verifyToken: randomBytes(16).toString("hex") },
   });
 
+  // A miss for this hostname may already be cached — from Caddy's TLS probe, or
+  // from the owner checking whether it works yet. Clearing it here means the
+  // domain starts responding the moment it is verified rather than never.
+  await revalidateHost(hostname);
   revalidatePath(`/dashboard/${siteId}/domains`);
   return { ok: "Added. Create the DNS record below, then verify." };
 }
@@ -52,6 +57,7 @@ export async function verifyDomain(siteId: string, domainId: string): Promise<Do
     data: { verified: result.ok, lastCheckedAt: new Date() },
   });
 
+  await revalidateHost(domain.hostname);
   revalidatePath(`/dashboard/${siteId}/domains`);
 
   if (result.ok) return { ok: "Verified. HTTPS is issued automatically on the first visit." };
@@ -64,7 +70,12 @@ export async function removeDomain(siteId: string, domainId: string): Promise<Do
   const owned = await requireSiteOwner(siteId);
   if (!owned) return { error: "Not found." };
 
+  // Read the hostname before deleting it: after the delete there is nothing
+  // left to tell us which cache entry to drop, and a stale entry would keep
+  // serving the site on a domain the owner just disconnected.
+  const domain = await db.domain.findFirst({ where: { id: domainId, siteId } });
   await db.domain.deleteMany({ where: { id: domainId, siteId } });
+  if (domain) await revalidateHost(domain.hostname);
   revalidatePath(`/dashboard/${siteId}/domains`);
   return { ok: "Removed." };
 }
