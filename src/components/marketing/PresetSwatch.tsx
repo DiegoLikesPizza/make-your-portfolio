@@ -20,7 +20,7 @@ export function PresetSwatch({
   label: string;
   description: string;
   design: Design;
-  /** Absent when this preset has no published demo — see publishedDemoHandles. */
+  /** The `/d/<preset>` demo page. */
   demoHref?: string;
 }) {
   const p = design.tokens.palette;

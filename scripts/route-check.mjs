@@ -35,10 +35,12 @@ async function check(label, path, host, want) {
 
 await check("path /u/demo", "/u/demo", null, 200);
 await check("path /u/nobody", "/u/nobody", null, 404);
+await check("demo /d/editorial", "/d/editorial", null, 200);
+await check("demo /d/nobody", "/d/nobody", null, 404);
 await check("app domain root", "/", "example.localhost", 200);
 await check("app subdomain is the app", "/", "demo.example.localhost", 200);
 await check("unknown custom domain", "/", "not-connected.test", 404);
 await check("LAN IP is the app", "/", "192.168.178.69:3100", 200);
 
-console.log(`\n${6 - fail}/6 route checks passed`);
+console.log(`\n${8 - fail}/8 route checks passed`);
 process.exit(fail ? 1 : 0);

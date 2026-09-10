@@ -29,8 +29,8 @@ components.
 
 ## The public demos
 
-`npm run seed:demos` publishes one example portfolio per preset — `/u/editorial`
-through `/u/brutalist` — which the homepage and `/layouts` link to. See
+One example portfolio per preset lives at `/d/editorial` through
+`/d/brutalist`, rendered straight from the fixture — nothing to seed. See
 [development.md](development.md#the-public-demos).
 
 ## What is not built

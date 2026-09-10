@@ -113,7 +113,6 @@ git pull
 npm install --no-audit && npx prisma generate && npx prisma migrate deploy && npm run build
 cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
 pm2 restart make-your-portfolio
-npm run seed:demos    # only when the demos or a preset changed
 ```
 
 `npx prisma generate` is not optional. `src/generated/prisma` is gitignored, so
