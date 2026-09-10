@@ -14,15 +14,23 @@ import type { ReactNode } from "react";
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">{label}</span>
+      <span className="block text-xs font-medium uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-neutral-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-neutral-400 dark:text-neutral-500">{hint}</span>}
     </label>
   );
 }
 
-export const inputClass =
-  "mt-1.5 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none transition-colors focus:border-neutral-900";
+export const inputClass = [
+  "mt-1.5 w-full rounded-md border px-3 py-2 text-sm outline-none transition-colors",
+  "border-neutral-300 bg-white text-neutral-900 focus:border-neutral-900",
+  // The placeholder colour has to be stated. `color-scheme: light dark` hands
+  // the UA a scheme-appropriate grey, which against these explicitly painted
+  // backgrounds lands almost invisible in one scheme or the other.
+  "placeholder:text-neutral-400",
+  "dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-100",
+  "dark:placeholder:text-neutral-500",
+].join(" ");
 
 export function TextInput({
   label, value, onChange, placeholder, hint,
@@ -81,15 +89,15 @@ export function Select<T extends string>({
 export function Toggle({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <label className="flex items-center justify-between gap-4 py-1.5">
-      <span className="text-sm text-neutral-700">{label}</span>
+      <span className="text-sm text-neutral-700 dark:text-neutral-300">{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={value}
         onClick={() => onChange(!value)}
-        className={`h-5 w-9 shrink-0 rounded-full transition-colors ${value ? "bg-neutral-900" : "bg-neutral-300"}`}
+        className={`h-5 w-9 shrink-0 rounded-full transition-colors ${value ? "bg-neutral-900 dark:bg-neutral-100" : "bg-neutral-300 dark:bg-neutral-700"}`}
       >
-        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${value ? "translate-x-4.5" : "translate-x-0.5"}`} />
+        <span className={`block h-4 w-4 rounded-full bg-white transition-transform dark:bg-neutral-900 ${value ? "translate-x-4.5" : "translate-x-0.5"}`} />
       </button>
     </label>
   );
@@ -103,10 +111,10 @@ export function ColorInput({ label, value, onChange }: { label: string; value: s
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-10 cursor-pointer rounded border border-neutral-300 bg-white p-1"
+          className="h-9 w-10 cursor-pointer rounded border border-neutral-300 bg-white p-1 dark:border-neutral-700 dark:bg-neutral-950"
         />
         <input
-          className="w-full rounded-md border border-neutral-300 px-3 py-2 font-mono text-xs uppercase outline-none focus:border-neutral-900"
+          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-xs uppercase text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-100"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -126,9 +134,9 @@ export function ItemCard({
   children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900/60">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="truncate text-xs font-medium text-neutral-700">{title}</span>
+        <span className="truncate text-xs font-medium text-neutral-700 dark:text-neutral-300">{title}</span>
         <div className="flex shrink-0 items-center gap-1">
           <IconButton label="Move up" onClick={onMoveUp} disabled={!onMoveUp}>↑</IconButton>
           <IconButton label="Move down" onClick={onMoveDown} disabled={!onMoveDown}>↓</IconButton>
@@ -155,7 +163,7 @@ function IconButton({
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className="h-6 w-6 rounded border border-neutral-200 bg-white text-xs text-neutral-500 transition-colors hover:text-neutral-900 disabled:opacity-30"
+      className="h-6 w-6 rounded border border-neutral-200 bg-white text-xs text-neutral-500 transition-colors hover:text-neutral-900 disabled:opacity-30 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
     >
       {children}
     </button>
@@ -167,7 +175,7 @@ export function AddButton({ label, onClick }: { label: string; onClick: () => vo
     <button
       type="button"
       onClick={onClick}
-      className="w-full rounded-lg border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900"
+      className="w-full rounded-lg border border-dashed border-neutral-300 py-2 text-xs font-medium text-neutral-500 transition-colors hover:border-neutral-900 hover:text-neutral-900 dark:border-neutral-700 dark:text-neutral-400 dark:hover:border-neutral-100 dark:hover:text-neutral-50"
     >
       + {label}
     </button>

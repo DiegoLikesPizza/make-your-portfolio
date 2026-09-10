@@ -33,8 +33,8 @@ export function ListEditor<T extends { id: string }>({
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">{label}s</span>
-        {hint && <span className="text-right text-xs text-neutral-400">{hint}</span>}
+        <span className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">{label}s</span>
+        {hint && <span className="text-right text-xs text-neutral-400 dark:text-neutral-500">{hint}</span>}
       </div>
       {items.map((item, i) => (
         <ItemCard

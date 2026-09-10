@@ -26,7 +26,7 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
   return (
     <div className="space-y-6">
       <section className="space-y-4">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900">Hero</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900 dark:text-neutral-50">Hero</h3>
         <Select
           label="Layout"
           value={doc.hero.variant}
@@ -83,7 +83,7 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
       />
 
       <section className="space-y-4">
-        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900">Search &amp; sharing</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900 dark:text-neutral-50">Search &amp; sharing</h3>
         <TextInput label="Page title" value={doc.meta.title} onChange={(title) => setMeta({ title })} />
         <TextArea label="Description" rows={3} value={doc.meta.description} onChange={(description) => setMeta({ description })} />
       </section>
