@@ -14,12 +14,14 @@ const RADIUS: Record<Design["tokens"]["radius"], string> = {
 };
 
 export function PresetSwatch({
-  id, label, description, design,
+  id, label, description, design, demoHref,
 }: {
   id: string;
   label: string;
   description: string;
   design: Design;
+  /** Absent when this preset has no published demo — see publishedDemoHandles. */
+  demoHref?: string;
 }) {
   const p = design.tokens.palette;
   // Presets that ship dark (terminal) should preview dark.
@@ -57,12 +59,22 @@ export function PresetSwatch({
       <div className="border-t border-neutral-200 p-4 dark:border-neutral-800">
         <h3 className="font-medium">{label}</h3>
         <p className="mt-1 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{description}</p>
-        <a
-          href={`/layouts?preset=${id}`}
-          className="mt-3 inline-block text-xs font-medium text-neutral-500 underline-offset-4 hover:underline"
-        >
-          See the layouts
-        </a>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          {demoHref && (
+            <a
+              href={demoHref}
+              className="text-xs font-medium text-neutral-900 underline-offset-4 hover:underline dark:text-white"
+            >
+              See a finished page &rarr;
+            </a>
+          )}
+          <a
+            href={`/layouts?preset=${id}`}
+            className="text-xs font-medium text-neutral-500 underline-offset-4 hover:underline"
+          >
+            See the layouts
+          </a>
+        </div>
       </div>
     </div>
   );

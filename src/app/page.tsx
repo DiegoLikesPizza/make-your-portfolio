@@ -3,6 +3,7 @@ import { getMySite } from "@/lib/auth";
 import { PRESETS } from "@/presets";
 import { SECTION_VARIANTS } from "@/lib/schema/sections";
 import { PresetSwatch } from "@/components/marketing/PresetSwatch";
+import { publishedDemoHandles } from "@/lib/sites";
 
 export const metadata = {
   title: "Make Your Portfolio",
@@ -14,6 +15,9 @@ const variantCount = Object.values(SECTION_VARIANTS).reduce((n, v) => n + v.leng
 export default async function Home() {
   // Signed in already? Send them to their work, not to a pitch.
   const me = await getMySite();
+  // Built from what is actually published, so a fresh install that hasn't run
+  // `npm run seed:demos` shows no link rather than a broken one.
+  const demos = await publishedDemoHandles();
 
   return (
     <div className="min-h-screen bg-white text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50">
@@ -96,7 +100,13 @@ export default async function Home() {
           <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Object.entries(PRESETS).map(([id, preset]) => (
               <li key={id}>
-                <PresetSwatch id={id} label={preset.label} description={preset.description} design={preset.design} />
+                <PresetSwatch
+                id={id}
+                label={preset.label}
+                description={preset.description}
+                design={preset.design}
+                demoHref={demos.includes(id) ? `/u/${id}` : undefined}
+              />
               </li>
             ))}
           </ul>

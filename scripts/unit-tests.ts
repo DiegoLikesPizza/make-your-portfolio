@@ -70,6 +70,9 @@ const subCases: [string, string | null][] = [
   ["api", "reserved"],
   ["www", "reserved"],
   ["billing", "reserved"],
+  // The public demo portfolios live at /u/<preset>, so those handles are ours.
+  ["editorial", "reserved"],
+  ["brutalist", "reserved"],
   ["a".repeat(64), "too-long"],
 ];
 
