@@ -20,7 +20,15 @@ export const terminal: Design = {
     linkHover: "highlight",
     motion: "none",
   },
-  nav: { variant: "side-left-rail", labelStyle: "numbered", showLogo: true, showThemeToggle: false, blurOnScroll: false },
+  nav: {
+    variant: "side-left-rail",
+    labelStyle: "numbered",
+    showLogo: true,
+    showThemeToggle: false,
+    blurOnScroll: false,
+    side: "left",
+    mobileBehavior: "scroll",
+  },
   background: {
     light: { kind: "pattern", style: "grid", color: "#1b2531", scale: 4, opacity: 0.5 },
     dark: { kind: "pattern", style: "grid", color: "#1b2531", scale: 4, opacity: 0.5 },

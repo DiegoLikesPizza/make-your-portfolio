@@ -14,9 +14,33 @@ import { PRESETS } from "@/presets";
 const opts = <T extends string>(values: readonly T[]) =>
   values.map((v) => ({ value: v, label: v.replace(/-/g, " ") }));
 
+/**
+ * Explicit labels rather than de-kebabbing the id: `side-left-rail` is stored in
+ * documents and can't be renamed, but it picks its own side now, so showing the
+ * raw id would contradict the Side control right underneath it.
+ */
 const NAV_VARIANTS = [
-  "top-fixed", "top-static", "side-left-rail", "side-floating-pill",
-  "bottom-dock", "dot-rail", "hamburger-overlay", "none",
+  { value: "top-fixed", label: "Top, fixed" },
+  { value: "top-static", label: "Top, static" },
+  { value: "side-left-rail", label: "Side rail" },
+  { value: "side-floating-pill", label: "Floating pill" },
+  { value: "bottom-dock", label: "Bottom dock" },
+  { value: "dot-rail", label: "Dot rail" },
+  { value: "hamburger-overlay", label: "Hamburger" },
+  { value: "none", label: "None" },
+] as const;
+
+/** Variants that hang off a vertical edge, and so have a side to pick. */
+const SIDE_NAVS = ["side-left-rail", "side-floating-pill", "dot-rail"];
+
+/** Variants that lay their links out in a row, and so can run out of room. */
+const ROW_NAVS = ["top-fixed", "top-static"];
+
+const MOBILE_BEHAVIORS = [
+  { value: "hamburger", label: "Collapse to a menu" },
+  { value: "scroll", label: "Scroll sideways" },
+  { value: "wrap", label: "Wrap onto more lines" },
+  { value: "hide", label: "Hide the links" },
 ] as const;
 
 const FONT_PAIRS = [
@@ -45,7 +69,24 @@ export function DesignPanel({ design, onChange }: { design: Design; onChange: (n
       </Group>
 
       <Group title="Navigation">
-        <Select label="Style" value={design.nav.variant} options={opts(NAV_VARIANTS)} onChange={(variant) => setNav({ variant })} />
+        <Select label="Style" value={design.nav.variant} options={NAV_VARIANTS} onChange={(variant) => setNav({ variant })} />
+        {SIDE_NAVS.includes(design.nav.variant) && (
+          <Select
+            label="Side"
+            value={design.nav.side}
+            options={opts(["left", "right"] as const)}
+            onChange={(side) => setNav({ side })}
+          />
+        )}
+        {ROW_NAVS.includes(design.nav.variant) && (
+          <Select
+            label="When links don't fit"
+            value={design.nav.mobileBehavior}
+            options={MOBILE_BEHAVIORS}
+            hint="Applies below 768px, where a row of more than two or three links overflows the bar."
+            onChange={(mobileBehavior) => setNav({ mobileBehavior })}
+          />
+        )}
         <Select
           label="Labels"
           value={design.nav.labelStyle}

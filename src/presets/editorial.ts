@@ -35,6 +35,8 @@ export const editorial: Design = {
     showLogo: true,
     showThemeToggle: true,
     blurOnScroll: true,
+    side: "left",
+    mobileBehavior: "hamburger",
   },
   background: {
     light: { kind: "none" },

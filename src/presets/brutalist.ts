@@ -20,7 +20,15 @@ export const brutalist: Design = {
     linkHover: "highlight",
     motion: "stagger",
   },
-  nav: { variant: "bottom-dock", labelStyle: "text", showLogo: true, showThemeToggle: true, blurOnScroll: false },
+  nav: {
+    variant: "bottom-dock",
+    labelStyle: "text",
+    showLogo: true,
+    showThemeToggle: true,
+    blurOnScroll: false,
+    side: "left",
+    mobileBehavior: "scroll",
+  },
   background: {
     light: { kind: "pattern", style: "dots", color: "#d8d2c0", scale: 3, opacity: 0.8 },
     dark: { kind: "solid", color: "#101010" },

@@ -25,12 +25,24 @@ export const navVariant = z.enum([
   "none",
 ]);
 
+/** What a horizontal nav does once its links stop fitting the viewport. */
+export const navMobileBehavior = z.enum(["hamburger", "scroll", "wrap", "hide"]);
+
 export const navConfig = z.object({
   variant: navVariant,
   labelStyle: z.enum(["text", "numbered", "icon", "dot"]),
   showLogo: z.boolean(),
   showThemeToggle: z.boolean(),
   blurOnScroll: z.boolean(),
+  /**
+   * Which edge the vertical navs (rail, floating pill, dot rail) sit on.
+   *
+   * Defaulted rather than required: these two fields arrived after documents
+   * were already stored, and `migrate` re-parses every one of them on read, so
+   * a default here is the migration.
+   */
+  side: z.enum(["left", "right"]).default("left"),
+  mobileBehavior: navMobileBehavior.default("hamburger"),
 });
 
 export const cta = z.object({
@@ -99,6 +111,7 @@ export type PortfolioDoc = z.infer<typeof portfolioDoc>;
 export type Design = z.infer<typeof design>;
 export type Profile = z.infer<typeof profile>;
 export type NavConfig = z.infer<typeof navConfig>;
+export type NavMobileBehavior = z.infer<typeof navMobileBehavior>;
 export type Cta = z.infer<typeof cta>;
 
 /**

@@ -20,7 +20,15 @@ export const gradient: Design = {
     linkHover: "wipe",
     motion: "rise",
   },
-  nav: { variant: "side-floating-pill", labelStyle: "text", showLogo: false, showThemeToggle: true, blurOnScroll: true },
+  nav: {
+    variant: "side-floating-pill",
+    labelStyle: "text",
+    showLogo: false,
+    showThemeToggle: true,
+    blurOnScroll: true,
+    side: "left",
+    mobileBehavior: "hamburger",
+  },
   background: {
     light: {
       kind: "gradient", type: "linear", angle: 160,
