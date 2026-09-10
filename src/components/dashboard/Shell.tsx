@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SignOutButton } from "@/components/editor/SignOutButton";
+import { ASSIST_ENABLED } from "@/lib/assist/generate";
 
 /**
  * The frame around every dashboard page except the editor.
@@ -9,7 +10,7 @@ import { SignOutButton } from "@/components/editor/SignOutButton";
  * no gain. Everything else is a normal page and shares this.
  */
 
-type Tab = "editor" | "analytics" | "settings" | "account";
+type Tab = "editor" | "assist" | "analytics" | "settings" | "account";
 
 export function DashboardShell({
   siteId,
@@ -27,6 +28,11 @@ export function DashboardShell({
     ...(siteId
       ? ([
           { key: "editor", label: "Editor", href: `/dashboard/${siteId}/edit` },
+          // Only where the server can actually do it — same rule the sign-in
+          // providers follow, so a tab never leads to something that can't run.
+          ...(ASSIST_ENABLED
+            ? ([{ key: "assist", label: "Write it for me", href: `/dashboard/${siteId}/assist` }] as const)
+            : []),
           { key: "analytics", label: "Analytics", href: `/dashboard/${siteId}/analytics` },
           { key: "settings", label: "Settings", href: `/dashboard/${siteId}/settings` },
         ] as const)
