@@ -14,8 +14,14 @@ export default function proxy(request: NextRequest) {
 
   if (resolveHost(host).kind === "app") return NextResponse.next();
 
-  const url = request.nextUrl.clone();
-  url.pathname = `/site/${encodeURIComponent(host)}`;
+  // Built from `request.url`, not `request.nextUrl`. Behind a TLS-terminating
+  // proxy, nextUrl takes its protocol from X-Forwarded-Proto, so the rewrite
+  // target becomes `https://localhost:3004/...` — an origin that does not
+  // exist. Next sees an origin different from its own, treats the rewrite as an
+  // external proxy, and tries to speak TLS to a plain HTTP port: EPROTO, 500.
+  // `request.url` is the address the server is actually listening on.
+  const url = new URL(`/site/${encodeURIComponent(host)}`, request.url);
+  url.search = request.nextUrl.search;
   return NextResponse.rewrite(url);
 }
 
