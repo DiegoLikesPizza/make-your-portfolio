@@ -79,15 +79,18 @@ export function SectionList({
           <span className="truncate">Profile &amp; hero</span>
         </button>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        {/* A fixed id keeps dnd-kit's aria-describedby ids stable across the
+            server and client renders; without one it counts up from a module
+            global and every reload logs a hydration mismatch. */}
+        <DndContext id="section-list" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             {sections.map((section, i) => (
           <SortableRow key={section.id} id={section.id} className={row(selected === section.id, true)}>
             <button type="button" onClick={() => onSelect(section.id)} className="min-w-0 flex-1 truncate text-left">
-              <span className={section.hidden ? "text-neutral-400 line-through" : undefined}>
+              <span className={section.hidden ? "text-neutral-400 line-through dark:text-neutral-500" : undefined}>
                 {section.title || SECTION_LABELS[section.type]}
               </span>
-              <span className="ml-2 text-[10px] uppercase tracking-wider text-neutral-400">{section.variant}</span>
+              <span className="ml-2 text-[10px] uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{section.variant}</span>
             </button>
             <div className="flex shrink-0 items-center gap-0.5">
               <Mini label="Move up" disabled={i === 0} onClick={() => onChange(move([...sections], i, i - 1))}>↑</Mini>
@@ -107,10 +110,10 @@ export function SectionList({
         </DndContext>
       </div>
 
-      <div className="border-t border-neutral-200 p-3">
-        <label className="block text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">Add section</label>
+      <div className="border-t border-neutral-200 p-3 dark:border-neutral-800">
+        <label className="block text-xs font-medium uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">Add section</label>
         <select
-          className="mt-1.5 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900"
+          className="mt-1.5 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-50 dark:focus:border-neutral-100"
           value=""
           onChange={(e) => e.target.value && add(e.target.value as SectionType)}
         >
@@ -130,7 +133,9 @@ const row = (active: boolean, flex = false) =>
   [
     "w-full rounded-md px-2.5 py-2 text-sm transition-colors",
     flex ? "flex items-center gap-2" : "block text-left",
-    active ? "bg-neutral-900 text-white" : "text-neutral-700 hover:bg-neutral-100",
+    active
+      ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+      : "text-neutral-700 hover:bg-neutral-100 dark:text-neutral-300 dark:hover:bg-neutral-800",
   ].join(" ");
 
 function Mini({

@@ -67,18 +67,20 @@ export function EditorApp({
   };
 
   return (
-    <div className="flex h-screen flex-col bg-neutral-100 text-neutral-900">
-      <header className="flex shrink-0 items-center gap-4 border-b border-neutral-200 bg-white px-4 py-2.5">
+    <div className="flex h-screen flex-col bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-50">
+      <header className="flex shrink-0 items-center gap-4 border-b border-neutral-200 bg-white px-4 py-2.5 dark:border-neutral-800 dark:bg-neutral-900">
         <span className="text-sm font-semibold">{subdomain}</span>
 
-        <div className="flex rounded-md border border-neutral-200 p-0.5">
+        <div className="flex rounded-md border border-neutral-200 p-0.5 dark:border-neutral-800">
           {(["content", "design"] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
               className={`rounded px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                tab === t ? "bg-neutral-900 text-white" : "text-neutral-600 hover:text-neutral-900"
+                tab === t
+                  ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                  : "text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
               }`}
             >
               {t}
@@ -88,7 +90,7 @@ export function EditorApp({
 
         <div className="ml-auto flex items-center gap-3">
           <SaveIndicator state={saveState} />
-          <div className="flex rounded-md border border-neutral-200 p-0.5">
+          <div className="flex rounded-md border border-neutral-200 p-0.5 dark:border-neutral-800">
             {(["desktop", "tablet", "phone"] as Device[]).map((d) => (
               <button
                 key={d}
@@ -97,7 +99,9 @@ export function EditorApp({
                 aria-label={d}
                 title={d}
                 className={`rounded px-2 py-1 text-xs transition-colors ${
-                  device === d ? "bg-neutral-900 text-white" : "text-neutral-500 hover:text-neutral-900"
+                  device === d
+                    ? "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900"
+                    : "text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-50"
                 }`}
               >
                 {d === "desktop" ? "\u25ad" : d === "tablet" ? "\u25af" : "\u258f"}
@@ -106,7 +110,7 @@ export function EditorApp({
           </div>
           <a
             href={`/dashboard/${siteId}/domains`}
-            className="text-xs text-neutral-500 underline-offset-2 hover:underline"
+            className="text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
           >
             Domains
           </a>
@@ -115,7 +119,7 @@ export function EditorApp({
               href={`/u/${subdomain}`}
               target="_blank"
               rel="noreferrer"
-              className="text-xs text-neutral-500 underline-offset-2 hover:underline"
+              className="text-xs text-neutral-500 underline-offset-2 hover:underline dark:text-neutral-400"
             >
               View site
             </a>
@@ -125,16 +129,16 @@ export function EditorApp({
             type="button"
             onClick={publish}
             disabled={publishing}
-            className="rounded-md bg-neutral-900 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-50"
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-neutral-700 disabled:opacity-50 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-300"
           >
             {publishing ? "Publishing\u2026" : published ? "Publish changes" : "Publish"}
           </button>
         </div>
       </header>
 
-      {publishError && <p role="alert" className="shrink-0 bg-red-50 px-4 py-2 text-xs text-red-700">{publishError}</p>}
+      {publishError && <p role="alert" className="shrink-0 bg-red-50 px-4 py-2 text-xs text-red-700 dark:bg-red-950 dark:text-red-300">{publishError}</p>}
       {saveState === "conflict" && (
-        <p role="alert" className="shrink-0 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+        <p role="alert" className="shrink-0 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-200">
           This site changed in another tab. Reload to pick up those edits — saving here has stopped so nothing is overwritten.
         </p>
       )}
@@ -142,11 +146,11 @@ export function EditorApp({
       <div className="flex min-h-0 flex-1">
         {tab === "content" ? (
           <>
-            <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white">
+            <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
               <SectionList sections={doc.sections} selected={selected} onSelect={setSelected} onChange={setSections} />
             </aside>
 
-            <section className="w-96 shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-4">
+            <section className="w-96 shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
               {section ? (
                 <div className="space-y-4">
                   <TextInput
@@ -167,7 +171,7 @@ export function EditorApp({
                     hint="Every layout of a section uses the same content — switching never loses anything."
                     onChange={(variant) => setSection({ ...section, variant } as Section)}
                   />
-                  <hr className="border-neutral-200" />
+                  <hr className="border-neutral-200 dark:border-neutral-800" />
                   <SectionForm section={section} onChange={setSection} />
                 </div>
               ) : (
@@ -176,14 +180,14 @@ export function EditorApp({
             </section>
           </>
         ) : (
-          <section className="w-[26rem] shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-4">
+          <section className="w-[26rem] shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
             <DesignPanel design={doc.design} onChange={(design) => update({ ...doc, design })} />
           </section>
         )}
 
-        <main className="min-w-0 flex-1 overflow-hidden bg-neutral-200 p-4">
+        <main className="min-w-0 flex-1 overflow-hidden bg-neutral-200 p-4 dark:bg-black">
           <div
-            className="mx-auto h-full overflow-hidden rounded-lg bg-white shadow-sm"
+            className="mx-auto h-full overflow-hidden rounded-lg bg-white shadow-sm dark:bg-neutral-900"
             style={{ width: DEVICE_WIDTH[device] }}
           >
             <iframe ref={previewFrame} src={`/dashboard/${siteId}/preview`} title="Preview" className="h-full w-full border-0" />
@@ -201,5 +205,5 @@ function SaveIndicator({ state }: { state: SaveState }) {
     : state === "error" ? "Save failed"
     : state === "conflict" ? "Paused"
     : "";
-  return <span className="w-20 text-right text-xs text-neutral-400">{text}</span>;
+  return <span className="w-20 text-right text-xs text-neutral-400 dark:text-neutral-500">{text}</span>;
 }

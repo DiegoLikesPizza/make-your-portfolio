@@ -91,7 +91,7 @@ export function DesignPanel({ design, onChange }: { design: Design; onChange: (n
           <ColorInput label="Text" value={design.tokens.palette.foreground} onChange={(foreground) => setPalette({ foreground })} />
           <ColorInput label="Text (dark)" value={design.tokens.palette.foregroundDark} onChange={(foregroundDark) => setPalette({ foregroundDark })} />
         </div>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-neutral-400 dark:text-neutral-500">
           Greys, borders and muted text are derived from these three, so they stay in tune automatically.
         </p>
       </Group>
@@ -106,7 +106,7 @@ export function DesignPanel({ design, onChange }: { design: Design; onChange: (n
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900">{title}</h3>
+      <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900 dark:text-neutral-50">{title}</h3>
       {children}
     </section>
   );
