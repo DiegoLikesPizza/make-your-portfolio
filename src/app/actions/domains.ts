@@ -7,6 +7,7 @@ import { requireSiteOwner } from "@/lib/auth";
 import { normalizeHost, APP_DOMAIN } from "@/lib/hosts";
 import { checkDomain } from "@/lib/dns";
 import { revalidateHost } from "@/lib/sites";
+import { issueCertificate } from "@/lib/certs";
 
 export type DomainState = { error?: string; ok?: string };
 
@@ -60,7 +61,13 @@ export async function verifyDomain(siteId: string, domainId: string): Promise<Do
   await revalidateHost(domain.hostname);
   revalidatePath(`/dashboard/${siteId}/domains`);
 
-  if (result.ok) return { ok: "Verified. HTTPS is issued automatically on the first visit." };
+  if (result.ok) {
+    // Kicked off after the row is verified, never before: issuance is gated on
+    // verification, and asking Let's Encrypt for a name we haven't confirmed is
+    // how an ACME rate limit gets burned.
+    issueCertificate(domain.hostname);
+    return { ok: "Verified. The certificate is being issued now — give it a minute, then reload." };
+  }
   return {
     error: `${result.reason}${result.found.length ? ` Found: ${result.found.join(", ")}.` : ""} DNS can take a few minutes.`,
   };

@@ -69,6 +69,45 @@ calls it on `127.0.0.1` and the app binds to loopback. It is excluded from the
 proxy's matcher on purpose: Caddy passes the domain as a query parameter, not as
 the `Host` header.
 
+## Two front ends, two ways to get a certificate
+
+**Caddy** (the clean-server design) issues on demand and asks
+`/api/caddy/authorize` first. Nothing else is needed.
+
+**nginx** (what the deployed box runs) cannot issue for a hostname it has never
+seen, so the app does it explicitly:
+
+1. `00-customer-domains` is the catch-all `default_server`. Without it an
+   unmatched Host falls through to whichever block nginx loaded first — which
+   served an unrelated site's content on customers' domains, behind a
+   certificate warning. It proxies everything to the app, and serves
+   `/.well-known/acme-challenge/` from `/var/www/certbot` over plain HTTP so a
+   challenge can succeed before any certificate exists.
+2. On verification the app runs [`deploy/issue-cert.sh`](../deploy/issue-cert.sh)
+   — the path in `CERT_ISSUE_COMMAND`, unset means the feature does not exist.
+   It runs `certbot certonly --webroot`, writes a per-domain server block, tests
+   the config, and reloads. It uses `--webroot` rather than the nginx plugin
+   because the plugin edits whichever block it thinks matches, and with a
+   catch-all default server that is the wrong one.
+3. It is idempotent and holds a lock, so pressing Re-check is the retry.
+
+The app never blocks on any of this: issuance is fire-and-forget, because it
+talks to Let's Encrypt and reloads a web server, and neither belongs inside a
+request someone is waiting on.
+
+## Verification checks where a name resolves, not what record it has
+
+A `CNAME` whose *target string* is the app domain used to pass. Put a CDN in
+front of the app domain — as the deployed box has — and that CNAME resolves to
+the CDN, which has never heard of the customer's hostname: green in the
+dashboard, broken on the internet.
+
+So the check resolves the name and requires the answer to include one of our
+addresses, and the instructions ask for an **A record to `SERVER_IP`** for every
+kind of name rather than a CNAME. When a CNAME to the app domain is found and
+still doesn't reach us, the error says exactly that instead of "points
+elsewhere".
+
 ## After any change to a Domain row, drop the cache tag
 
 An unverified hostname resolves to `null`, and `unstable_cache` stores that miss
