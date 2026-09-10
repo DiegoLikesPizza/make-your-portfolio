@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
 import { plain } from "@/lib/text";
 import { getPublishedSite } from "@/lib/sites";
+import { resolveDynamic } from "@/lib/dynamic";
 
 /**
  * Every published portfolio, whatever host it was reached by.
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await getPublishedSite(decodeURIComponent(host));
   if (!site) return {};
 
-  const { meta, profile } = site.doc;
+  const { meta, profile } = resolveDynamic(site.doc);
   return {
     title: meta.title || `${profile.name} — Portfolio`,
     description: meta.description || plain(profile.headline),
@@ -40,5 +41,5 @@ export default async function SitePage({ params }: Props) {
   // a draft must never be reachable on a public hostname.
   if (!site) notFound();
 
-  return <Portfolio ctx={{ doc: site.doc, assets: site.assets }} analyticsSiteId={site.id} />;
+  return <Portfolio ctx={{ doc: resolveDynamic(site.doc), assets: site.assets }} analyticsSiteId={site.id} />;
 }

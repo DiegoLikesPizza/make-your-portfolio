@@ -89,6 +89,18 @@ No database migration: the whole document is one JSON column. If a change can't
 be expressed as a default, add a `if (doc.version === 1) { …; doc.version = 2 }`
 branch to `migrate()` and bump `CURRENT_VERSION`.
 
+## Add a dynamic value
+
+[`src/lib/dynamic.ts`](../src/lib/dynamic.ts): add a resolver to `RESOLVERS`
+and an example to `DYNAMIC_VALUES`, then a case to the table in
+`scripts/unit-tests.ts`.
+
+A resolver is `(args, { doc, now }) => string | null`, and `null` means decline
+— the placeholder is left standing rather than rendered as an empty string.
+Format in UTC. Keep it a pure function of the document and the clock: reading
+anything else (a URL, the environment, another site's row) makes rendering a
+portfolio into an action taken on behalf of whoever wrote the document.
+
 ## Add a marker to the inline emphasis vocabulary
 
 [`src/lib/text.tsx`](../src/lib/text.tsx): add to `TOKEN`, `MARKS`, `plain()`
