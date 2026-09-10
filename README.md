@@ -109,10 +109,17 @@ Redeploy:
 ```bash
 cd /srv/websites/make-your-portfolio.lfdiego.xyz/app
 export PATH=/opt/node22/bin:$PATH
-npm install --no-audit && npx prisma migrate deploy && npm run build
+git pull
+npm install --no-audit && npx prisma generate && npx prisma migrate deploy && npm run build
 cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
 pm2 restart make-your-portfolio
+npm run seed:demos    # only when the demos or a preset changed
 ```
+
+`npx prisma generate` is not optional. `src/generated/prisma` is gitignored, so
+a pull never brings a client that knows about a new model — the build fails
+type-checking with `Property '<model>' does not exist on type 'PrismaClient'`
+until the client is regenerated.
 
 **Two production gotchas, both already handled — do not undo them:**
 
