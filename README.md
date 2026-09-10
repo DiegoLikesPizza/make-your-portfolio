@@ -1,9 +1,11 @@
 # Make Your Portfolio
 
 A hosted builder for **one-page portfolios**. Sign in, fill out a guided form, watch the page
-render live beside it, publish to `name.example.com`, `example.com/u/name`, or your own domain.
+render live beside it, publish to `example.com/u/name` or your own domain.
 
-The full plan lives at `~/.claude/plans/i-want-you-to-jazzy-garden.md`.
+**Documentation is in [`docs/`](docs/)** — start with
+[docs/architecture.md](docs/architecture.md). The full plan lives at
+`~/.claude/plans/i-want-you-to-jazzy-garden.md`.
 
 ## The idea in one paragraph
 
@@ -29,8 +31,10 @@ data**, so switching Projects from `numbered-list` to `grid-3` to `table` never 
 | 4. Editor | **done** — content, design, autosave, publish |
 | 5. Variant catalog | **done** — 52/52 section variants, 8 nav, 8 hero |
 | 6. Presets | **done** — 6 |
-| 7. Uploads | not started |
+| 7. Uploads | **not started** — the only unbuilt piece. `Asset` is modelled; nothing writes it |
 | 8. Custom domains | **done** — add, verify, on-demand TLS gate |
+| 9. Dashboard | **done** — account, analytics, settings; domains folded into settings |
+| 10. Write it for me | **done, unexercised** — needs `ANTHROPIC_API_KEY`; the live call has never run |
 
 ### Signing in
 
@@ -63,13 +67,18 @@ Then open **http://localhost:3100** and sign up. `npm run seed` also creates a `
 view at `/u/demo`.
 
 ```bash
-npm test              # host routing + subdomain rules
-npm run smoke         # end-to-end: sign-in -> edit -> autosave -> conflict -> publish
+npm test              # host routing, subdomain rules, the proxy matcher, the assist schema
+npm run routes        # every public URL (needs a running server)
+npm run smoke         # end-to-end: edit -> autosave -> conflict -> publish (needs a running server)
 npm run sweep         # every section type under every preset
+npm run coverage      # every planned variant has a component
+npm run contrast      # marketing pages paint their own background in both schemes
 ```
 
 - `/` — placeholder marketing page
+- `/layouts` — the public catalog browser
 - `/dashboard/<siteId>/edit` — the editor
+- `/dashboard/<siteId>/analytics` · `/settings` · `/dashboard/account`
 - `/u/demo` — the published portfolio, path-addressed
 - `curl -H 'Host: demo.example.localhost' localhost:3100` — the same site, host-addressed
 
@@ -120,8 +129,11 @@ what runs in production.
 
 ### Custom domains
 
-`/dashboard/<siteId>/domains` shows the exact DNS record to create, then verifies it with a real
-lookup, and the app already serves a verified custom domain correctly.
+`/dashboard/<siteId>/settings` shows the exact DNS record to create, then verifies it with a real
+lookup, and the app serves a verified custom domain correctly. (`/domains` permanently redirects
+there.) Every change to a domain drops that hostname's cache tag — without it the cached 404 from
+before verification never expired and the domain stayed dead after going green. See
+[docs/hosting.md](docs/hosting.md).
 
 **Not finished on the deployed box:** issuing the certificate. `/api/caddy/authorize` exists and is
 correct, but nginx has no equivalent of Caddy's on-demand TLS — it cannot obtain a certificate for
@@ -132,12 +144,18 @@ The endpoint is blocked at the nginx level (`deny all`) so it cannot be reached 
 ## Layout
 
 ```
+docs/                      architecture · editor · dashboard · hosting · development · extending
 src/
   proxy.ts                 host-based routing
-  components/editor/       the editor: section list, forms, design panel, preview
+  components/editor/       the editor: section list, layout picker, forms, design panel, preview
+  components/dashboard/    the frame around every non-editor page, and the views chart
   app/site/[host]/         the public renderer (one route serves every site)
   app/u/[subdomain]/       path-addressed alias
+  app/dashboard/           editor · analytics · settings · account · assist
+  app/actions/             server actions: domains, site, account, assist
   lib/schema/              portfolio.ts · sections.ts · tokens.ts · background.ts
+  lib/assist/              "write it for me": the brief schema and the Claude call
+  lib/variant-options.ts   which settings each layout has, and their defaults
   render/                  Portfolio · Nav · Background · tokens.ts (tokens -> CSS vars)
   variants/<type>/<id>.tsx the catalog, plus registry.ts
   presets/                 tested bundles of shell + tokens + nav
