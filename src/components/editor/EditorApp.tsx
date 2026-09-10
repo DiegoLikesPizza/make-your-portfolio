@@ -7,6 +7,7 @@ import { useDraft, type SaveState } from "./useDraft";
 import { SectionList } from "./SectionList";
 import { SectionForm } from "./SectionForm";
 import { ProfileForm } from "./ProfileForm";
+import { OptionsPanel } from "./OptionsPanel";
 import { DesignPanel } from "./DesignPanel";
 import { TextInput } from "./fields";
 
@@ -175,6 +176,7 @@ export function EditorApp({
                     hint="Used by nav links: #slug"
                     onChange={(slug) => setSection({ ...section, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
                   />
+                  <OptionsPanel section={section} onChange={setSection} />
                   <hr className="border-neutral-200 dark:border-neutral-800" />
                   <SectionForm section={section} onChange={setSection} />
                 </div>

@@ -1,9 +1,11 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import type { SectionProps } from "@/render/context";
+import { option } from "@/lib/variant-options";
 
 export default function StatsNumberRow({ section, index, ctx }: SectionProps<"stats">) {
   const m = ctx.doc.design.tokens.motion;
+  const centred = option(section, "align") === "center";
   return (
     <div>
       <Reveal motionStyle={m}>
@@ -11,7 +13,7 @@ export default function StatsNumberRow({ section, index, ctx }: SectionProps<"st
       </Reveal>
       <dl className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
         {section.data.items.map((s, i) => (
-          <Reveal key={s.id} motionStyle={m} delay={i * 0.05}>
+          <Reveal key={s.id} motionStyle={m} delay={i * 0.05} className={centred ? "text-center" : undefined}>
             <dt
               className="font-[family-name:var(--font-heading)] font-semibold leading-none tracking-[-0.02em] text-[var(--foreground)]"
               style={{ fontSize: "calc(clamp(2.5rem, 5vw, 3.75rem) * var(--type-scale))" }}

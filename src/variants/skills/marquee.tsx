@@ -2,6 +2,7 @@ import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { Marquee } from "@/render/primitives/Marquee";
 import type { SectionProps } from "@/render/context";
+import { MARQUEE_SECONDS, option } from "@/lib/variant-options";
 
 /** One scrolling row per group. Group labels sit to the left, static. */
 export default function SkillsMarquee({ section, index, ctx }: SectionProps<"skills">) {
@@ -17,7 +18,7 @@ export default function SkillsMarquee({ section, index, ctx }: SectionProps<"ski
             <h3 className="mb-3 font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.12em] text-[var(--foreground-subtle)]">
               {g.label}
             </h3>
-            <Marquee speed={30 + i * 6}>
+            <Marquee seconds={MARQUEE_SECONDS[option(section, "speed")] + i * 6} direction={option(section, "direction")}>
               {g.items.map((s) => (
                 <span
                   key={s.id}

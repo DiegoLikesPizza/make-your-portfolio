@@ -2,16 +2,21 @@ import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { asset, type SectionProps } from "@/render/context";
 import { highlight } from "@/lib/text";
+import { option } from "@/lib/variant-options";
 
 /** The only About layout that uses `imageAssetId`. */
 export default function AboutPortraitLeft({ section, index, ctx }: SectionProps<"about">) {
   const m = ctx.doc.design.tokens.motion;
   const { lead, body, footnote, imageAssetId } = section.data;
   const image = asset(ctx, imageAssetId);
+  // Order is swapped rather than floated: `order` keeps the portrait first in
+  // the DOM, so it is still the first thing read aloud and the first thing in
+  // the single-column stack on a phone, where "side" means nothing.
+  const imageRight = option(section, "imageSide") === "right";
 
   return (
     <div className="grid gap-10 lg:grid-cols-12 lg:gap-16">
-      <div className="lg:col-span-5">
+      <div className={`lg:col-span-5 ${imageRight ? "lg:order-2" : ""}`}>
         <Reveal motionStyle={m}>
           {image ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -28,7 +33,7 @@ export default function AboutPortraitLeft({ section, index, ctx }: SectionProps<
           )}
         </Reveal>
       </div>
-      <div className="lg:col-span-7">
+      <div className={`lg:col-span-7 ${imageRight ? "lg:order-1" : ""}`}>
         <Reveal motionStyle={m}>
           <SectionIndex index={index} label={section.title} show />
         </Reveal>

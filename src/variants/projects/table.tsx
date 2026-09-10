@@ -3,10 +3,22 @@ import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { StatusBadge } from "@/render/primitives/StatusBadge";
 import type { SectionProps } from "@/render/context";
+import { option } from "@/lib/variant-options";
 
 /** The densest projects layout. Scrolls inside itself rather than the page. */
 export default function ProjectsTable({ section, index, ctx }: SectionProps<"projects">) {
   const m = ctx.doc.design.tokens.motion;
+  const showYear = option(section, "showYear");
+  const showTech = option(section, "showTech");
+  // Header and body are built from one list, so a hidden column can't leave a
+  // header behind it — the classic way a configurable table goes crooked.
+  const columns = [
+    ...(showYear ? ["Year"] : []),
+    "Project",
+    ...(showTech ? ["Stack"] : []),
+    "Status",
+    "",
+  ];
 
   return (
     <div>
@@ -17,7 +29,7 @@ export default function ProjectsTable({ section, index, ctx }: SectionProps<"pro
         <table className="w-full min-w-[640px] border-collapse text-left">
           <thead>
             <tr className="border-b border-[var(--border-color)]">
-              {["Year", "Project", "Stack", "Status", ""].map((h) => (
+              {columns.map((h) => (
                 <th
                   key={h}
                   scope="col"
@@ -33,16 +45,20 @@ export default function ProjectsTable({ section, index, ctx }: SectionProps<"pro
               const external = p.href?.startsWith("http");
               return (
                 <tr key={p.id} className="border-b border-[var(--border-color)]">
-                  <td className="py-4 pr-6 font-[family-name:var(--font-mono)] text-xs text-[var(--foreground-subtle)]">
-                    {p.year}
-                  </td>
+                  {showYear && (
+                    <td className="py-4 pr-6 font-[family-name:var(--font-mono)] text-xs text-[var(--foreground-subtle)]">
+                      {p.year}
+                    </td>
+                  )}
                   <td className="py-4 pr-6">
                     <span className="font-medium text-[var(--foreground)]">{p.title}</span>
                     <span className="mt-1 block max-w-[48ch] text-sm text-[var(--foreground-muted)]">{p.summary}</span>
                   </td>
-                  <td className="py-4 pr-6 font-[family-name:var(--font-mono)] text-xs text-[var(--foreground-subtle)]">
-                    {p.tech.join(" · ")}
-                  </td>
+                  {showTech && (
+                    <td className="py-4 pr-6 font-[family-name:var(--font-mono)] text-xs text-[var(--foreground-subtle)]">
+                      {p.tech.join(" · ")}
+                    </td>
+                  )}
                   <td className="py-4 pr-6">
                     <StatusBadge status={p.status} />
                   </td>

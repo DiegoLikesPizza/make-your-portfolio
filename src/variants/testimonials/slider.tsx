@@ -1,7 +1,9 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { Attribution } from "@/render/primitives/Attribution";
+import { AutoScroll } from "@/render/primitives/AutoScroll";
 import type { SectionProps } from "@/render/context";
+import { option } from "@/lib/variant-options";
 
 /**
  * A scroll-snap slider — no JS, no carousel library.
@@ -16,7 +18,10 @@ export default function TestimonialsSlider({ section, index, ctx }: SectionProps
       <Reveal motionStyle={m}>
         <SectionIndex index={index} label={section.title} show />
       </Reveal>
-      <ul className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4">
+      <AutoScroll
+        enabled={option(section, "autoplay")}
+        className="mt-12 flex snap-x snap-mandatory gap-6 overflow-x-auto pb-4"
+      >
         {section.data.items.map((t) => (
           <li key={t.id} className="w-[min(90%,34rem)] shrink-0 snap-center">
             <figure className="h-full rounded-[var(--radius)] border border-[var(--border-color)] bg-[var(--surface)] p-8">
@@ -27,7 +32,7 @@ export default function TestimonialsSlider({ section, index, ctx }: SectionProps
             </figure>
           </li>
         ))}
-      </ul>
+      </AutoScroll>
     </div>
   );
 }
