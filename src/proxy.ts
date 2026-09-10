@@ -14,14 +14,23 @@ export default function proxy(request: NextRequest) {
 
   if (resolveHost(host).kind === "app") return NextResponse.next();
 
-  // Built from `request.url`, not `request.nextUrl`. Behind a TLS-terminating
-  // proxy, nextUrl takes its protocol from X-Forwarded-Proto, so the rewrite
-  // target becomes `https://localhost:3004/...` — an origin that does not
-  // exist. Next sees an origin different from its own, treats the rewrite as an
-  // external proxy, and tries to speak TLS to a plain HTTP port: EPROTO, 500.
-  // `request.url` is the address the server is actually listening on.
   const url = new URL(`/site/${encodeURIComponent(host)}`, request.url);
   url.search = request.nextUrl.search;
+
+  // Behind a TLS-terminating proxy the request URL's protocol comes from
+  // X-Forwarded-Proto — `https` — while this process listens on plain HTTP.
+  // A rewrite whose origin differs from the server's own is treated as an
+  // *external* proxy, so Next tries to speak TLS to an HTTP port and the
+  // request dies with EPROTO ("wrong version number") as a 500.
+  //
+  // The presence of the header is exactly the signal that something else
+  // terminated TLS and is talking to us over an internal hop. Both shipped
+  // front ends — the Caddyfile here and the nginx config on the deployed box —
+  // proxy to 127.0.0.1 over plain HTTP, so that hop is http.
+  if (url.protocol === "https:" && request.headers.get("x-forwarded-proto")) {
+    url.protocol = "http:";
+  }
+
   return NextResponse.rewrite(url);
 }
 
