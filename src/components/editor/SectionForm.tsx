@@ -5,6 +5,7 @@ import type { Section } from "@/lib/schema/sections";
 import { Select, TextArea, TextInput } from "./fields";
 import { ListEditor } from "./ListEditor";
 import { CommaListInput, keepIds, LineListInput } from "./TokenField";
+import { RichTextArea } from "./RichText";
 import { ICON_OPTIONS, STATUS_OPTIONS } from "./options";
 
 /**
@@ -21,7 +22,13 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
       const set = (patch: Partial<typeof d>) => onChange({ ...section, data: { ...d, ...patch } });
       return (
         <div className="space-y-4">
-          <TextArea label="Lead" rows={3} value={d.lead} onChange={(lead) => set({ lead })} />
+          <RichTextArea
+            label="Lead"
+            rows={3}
+            value={d.lead}
+            hint="The one big sentence. Select words and use the buttons."
+            onChange={(lead) => set({ lead })}
+          />
           <TextArea label="Body" rows={8} value={d.body} hint="Blank line between paragraphs." onChange={(body) => set({ body })} />
           <TextInput
             label="Footnote"
@@ -106,10 +113,11 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
       const set = (patch: Partial<typeof d>) => onChange({ ...section, data: { ...d, ...patch } });
       return (
         <div className="space-y-4">
-          <TextInput
+          <RichTextArea
             label="Headline"
+            rows={2}
             value={d.headline ?? ""}
-            hint="Wrap a word in ==double equals== to paint it in the accent colour."
+            hint="Select words and use the buttons."
             onChange={(headline) => set({ headline })}
           />
           <TextArea label="Blurb" rows={3} value={d.blurb ?? ""} onChange={(blurb) => set({ blurb })} />

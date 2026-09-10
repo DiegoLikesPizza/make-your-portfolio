@@ -75,6 +75,17 @@ function fill(section: Section): Section {
 }
 
 /**
+ * One filled section, for previewing a layout you have no content for yet.
+ *
+ * The layout picker shows your *own* content when it can; when you are adding a
+ * section there is none, and an empty layout tells you nothing about its shape.
+ */
+export function sampleSection(type: SectionType, variant: string): Section {
+  const base = blankSection(type, `${type}-${variant}`);
+  return { ...fill(base), variant } as Section;
+}
+
+/**
  * @param only  Restrict to one section type. The schema caps a document at 30
  *              sections and the full catalog is larger, so the sweep runs a
  *              type at a time rather than the cap being loosened for a test.

@@ -1,6 +1,7 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import type { SectionProps } from "@/render/context";
+import { highlight } from "@/lib/text";
 
 /** About inside a raised surface — reads well against a busy background. */
 export default function AboutCard({ section, index, ctx }: SectionProps<"about">) {
@@ -12,7 +13,7 @@ export default function AboutCard({ section, index, ctx }: SectionProps<"about">
       <div className="rounded-[var(--radius)] border border-[var(--border-color)] bg-[var(--surface)] p-8 shadow-[var(--shadow)] md:p-12">
         <SectionIndex index={index} label={section.title} show />
         <p className="mt-8 max-w-[46ch] font-[family-name:var(--font-heading)] text-2xl font-medium leading-snug text-[var(--foreground)]">
-          {lead}
+          {highlight(lead)}
         </p>
         <div className="mt-6 max-w-[62ch] space-y-5 leading-relaxed text-[var(--foreground-muted)]">
           {body.split(/\n\n+/).map((p, i) => (

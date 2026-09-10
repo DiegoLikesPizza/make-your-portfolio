@@ -3,6 +3,7 @@ import { SectionIndex } from "@/render/primitives/Section";
 import { LinkIcon } from "@/render/primitives/LinkIcon";
 import { Marquee } from "@/render/primitives/Marquee";
 import type { SectionProps } from "@/render/context";
+import { MARQUEE_SECONDS, option } from "@/lib/variant-options";
 
 /** Capability cards static, chips scrolling underneath. */
 export default function CapabilitiesMarquee({ section, index, ctx }: SectionProps<"capabilities">) {
@@ -29,7 +30,7 @@ export default function CapabilitiesMarquee({ section, index, ctx }: SectionProp
       </div>
       {chips.length > 0 && (
         <div className="mt-12 border-y border-[var(--border-color)] py-6">
-          <Marquee speed={35}>
+          <Marquee seconds={MARQUEE_SECONDS[option(section, "speed")]} direction={option(section, "direction")}>
             {chips.map((c) => (
               <span
                 key={c.id}

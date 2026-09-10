@@ -145,6 +145,32 @@ const STATS_VARIANTS = ["number-row", "cards", "inline-strip"] as const;
 const TEXT_VARIANTS = ["prose-narrow", "two-column", "callout", "pull-quote"] as const;
 const CONTACT_VARIANTS = ["channel-list", "big-cta", "split-with-form", "card-grid", "merged-footer"] as const;
 
+/**
+ * Per-layout settings.
+ *
+ * One flat, closed vocabulary rather than a free-form bag per variant. The
+ * safety property of this whole schema is that a document can only ever select
+ * one of *our* values — a tampered document can change which of them is used
+ * and never introduce one of its own — and a `Record<string, unknown>` here
+ * would be the hole in it.
+ *
+ * Which keys a given layout actually reads is a rendering concern and lives in
+ * src/lib/variant-options.ts. Keys a layout ignores stay in the document, so
+ * switching layout and switching back doesn't lose the setting.
+ */
+export const variantOptions = z.object({
+  align: z.enum(["left", "center"]).optional(),
+  imageSide: z.enum(["left", "right"]).optional(),
+  speed: z.enum(["slow", "normal", "fast"]).optional(),
+  direction: z.enum(["left", "right"]).optional(),
+  autoplay: z.boolean().optional(),
+  tone: z.enum(["neutral", "accent", "warning"]).optional(),
+  columns: z.enum(["2", "3", "4"]).optional(),
+  showYear: z.boolean().optional(),
+  showTech: z.boolean().optional(),
+  dividers: z.boolean().optional(),
+});
+
 /** Common fields every section carries, whatever its type. */
 const sectionBase = {
   id,
@@ -153,6 +179,8 @@ const sectionBase = {
   title: shortText.optional(),
   background: backgroundConfig.optional(),
   hidden: z.boolean(),
+  /** Layout-specific settings. Absent means every layout uses its default. */
+  options: variantOptions.optional(),
 };
 
 /**
@@ -210,6 +238,7 @@ export type SectionType = keyof typeof SECTION_VARIANTS;
 export const SECTION_TYPE_IDS = Object.keys(SECTION_VARIANTS) as SectionType[];
 
 export type Section = z.infer<typeof section>;
+export type VariantOptions = z.infer<typeof variantOptions>;
 export type SectionOf<T extends SectionType> = Extract<Section, { type: T }>;
 export type Project = z.infer<typeof project>;
 export type Link = z.infer<typeof link>;

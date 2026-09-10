@@ -7,9 +7,9 @@ import { useDraft, type SaveState } from "./useDraft";
 import { SectionList } from "./SectionList";
 import { SectionForm } from "./SectionForm";
 import { ProfileForm } from "./ProfileForm";
+import { OptionsPanel } from "./OptionsPanel";
 import { DesignPanel } from "./DesignPanel";
-import { Select, TextInput } from "./fields";
-import { variantOptions } from "./options";
+import { TextInput } from "./fields";
 
 type Tab = "content" | "design";
 type Device = "desktop" | "tablet" | "phone";
@@ -153,7 +153,13 @@ export function EditorApp({
         {tab === "content" ? (
           <>
             <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
-              <SectionList sections={doc.sections} selected={selected} onSelect={setSelected} onChange={setSections} />
+              <SectionList
+                doc={doc}
+                sections={doc.sections}
+                selected={selected}
+                onSelect={setSelected}
+                onChange={setSections}
+              />
             </aside>
 
             <section className="w-96 shrink-0 overflow-y-auto border-r border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900">
@@ -170,13 +176,7 @@ export function EditorApp({
                     hint="Used by nav links: #slug"
                     onChange={(slug) => setSection({ ...section, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, "-") })}
                   />
-                  <Select
-                    label="Layout"
-                    value={section.variant}
-                    options={variantOptions(section.type)}
-                    hint="Every layout of a section uses the same content — switching never loses anything."
-                    onChange={(variant) => setSection({ ...section, variant } as Section)}
-                  />
+                  <OptionsPanel section={section} onChange={setSection} />
                   <hr className="border-neutral-200 dark:border-neutral-800" />
                   <SectionForm section={section} onChange={setSection} />
                 </div>

@@ -3,11 +3,14 @@ import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { StatusBadge } from "@/render/primitives/StatusBadge";
 import type { SectionProps } from "@/render/context";
+import { option } from "@/lib/variant-options";
 
 /** lfdiego.xyz's Work: a numbered editorial list, one row per project. */
 export default function ProjectsNumberedList({ section, index, ctx }: SectionProps<"projects">) {
   const m = ctx.doc.design.tokens.motion;
   const { items } = section.data;
+  const dividers = option(section, "dividers");
+  const showTech = option(section, "showTech");
 
   return (
     <div>
@@ -15,13 +18,17 @@ export default function ProjectsNumberedList({ section, index, ctx }: SectionPro
         <SectionIndex index={index} label={section.title} show />
       </Reveal>
 
-      <ul className="mt-12 border-t border-[var(--border-color)]">
+      <ul className={`mt-12 ${dividers ? "border-t border-[var(--border-color)]" : ""}`}>
         {items.map((p, i) => {
           const external = p.href?.startsWith("http");
           return (
             <li key={p.id}>
               <Reveal motionStyle={m} delay={i * 0.04}>
-                <article className="group grid gap-4 border-b border-[var(--border-color)] py-8 md:grid-cols-12 md:gap-8 md:py-10">
+                <article
+                  className={`group grid gap-4 py-8 md:grid-cols-12 md:gap-8 md:py-10 ${
+                    dividers ? "border-b border-[var(--border-color)]" : ""
+                  }`}
+                >
                   <div className="md:col-span-2">
                     <span className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.14em] text-[var(--foreground-subtle)]">
                       {String(i + 1).padStart(2, "0")}
@@ -33,7 +40,7 @@ export default function ProjectsNumberedList({ section, index, ctx }: SectionPro
                       {p.title}
                     </h3>
                     <p className="mt-3 max-w-[60ch] leading-relaxed text-[var(--foreground-muted)]">{p.summary}</p>
-                    {p.tech.length > 0 && (
+                    {showTech && p.tech.length > 0 && (
                       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1">
                         {p.tech.map((t) => (
                           <li key={t} className="font-[family-name:var(--font-mono)] text-xs text-[var(--foreground-subtle)]">

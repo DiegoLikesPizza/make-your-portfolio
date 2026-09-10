@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import { Select, TextArea, TextInput } from "./fields";
 import { ListEditor } from "./ListEditor";
+import { RichTextArea } from "./RichText";
 import { ICON_OPTIONS } from "./options";
 
 const HERO_VARIANTS = [
@@ -36,11 +37,11 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
         <TextInput label="Name" value={p.name} onChange={(name) => setProfile({ name })} />
         <TextInput label="Initials" value={p.initials ?? ""} hint="Used for the monogram." onChange={(initials) => setProfile({ initials })} />
         <TextInput label="Eyebrow" value={p.eyebrow ?? ""} onChange={(eyebrow) => setProfile({ eyebrow })} />
-        <TextArea
+        <RichTextArea
           label="Headline"
           rows={3}
           value={p.headline}
-          hint="Wrap a word in ==double equals== to paint it in the accent colour."
+          hint="Select words and use the buttons — bold, italic, accent colour, muted."
           onChange={(headline) => setProfile({ headline })}
         />
         <TextArea label="Intro" rows={3} value={p.bio} onChange={(bio) => setProfile({ bio })} />

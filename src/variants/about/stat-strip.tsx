@@ -1,6 +1,7 @@
 import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import type { SectionProps } from "@/render/context";
+import { highlight } from "@/lib/text";
 
 /**
  * Same data as every other About variant — this one simply also surfaces
@@ -17,7 +18,7 @@ export default function AboutStatStrip({ section, index, ctx }: SectionProps<"ab
       </Reveal>
       <Reveal motionStyle={m} delay={0.08}>
         <p className="mt-10 max-w-[46ch] font-[family-name:var(--font-heading)] text-2xl font-medium leading-snug text-[var(--foreground)] md:text-[1.75rem]">
-          {lead}
+          {highlight(lead)}
         </p>
       </Reveal>
       <Reveal motionStyle={m} delay={0.14}>

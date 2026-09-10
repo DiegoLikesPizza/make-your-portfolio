@@ -3,6 +3,7 @@ import { SectionIndex } from "@/render/primitives/Section";
 import { Attribution } from "@/render/primitives/Attribution";
 import { Marquee } from "@/render/primitives/Marquee";
 import type { SectionProps } from "@/render/context";
+import { MARQUEE_SECONDS, option } from "@/lib/variant-options";
 
 export default function TestimonialsMarquee({ section, index, ctx }: SectionProps<"testimonials">) {
   const m = ctx.doc.design.tokens.motion;
@@ -12,7 +13,7 @@ export default function TestimonialsMarquee({ section, index, ctx }: SectionProp
         <SectionIndex index={index} label={section.title} show />
       </Reveal>
       <div className="mt-12">
-        <Marquee speed={50}>
+        <Marquee seconds={MARQUEE_SECONDS[option(section, "speed")]} direction={option(section, "direction")}>
           {section.data.items.map((t) => (
             <figure
               key={t.id}
