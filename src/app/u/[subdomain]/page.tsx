@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
+import { PersonJsonLd } from "@/render/PersonJsonLd";
 import { getPublishedSiteByHandle } from "@/lib/sites";
 import { resolveDynamic } from "@/lib/dynamic";
+import { appOrigin } from "@/lib/hosts";
 import { portfolioMetadata } from "@/lib/portfolio-metadata";
 
 /**
@@ -17,7 +19,12 @@ type Props = { params: Promise<{ subdomain: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { subdomain } = await params;
   const site = await getPublishedSiteByHandle(subdomain);
-  return site ? portfolioMetadata(resolveDynamic(site.doc)) : {};
+  if (!site) return {};
+  return portfolioMetadata(resolveDynamic(site.doc), {
+    cardPath: `/u/${subdomain}/og`,
+    assets: site.assets,
+    origin: appOrigin(),
+  });
 }
 
 export default async function UserSitePage({ params }: Props) {
@@ -26,5 +33,11 @@ export default async function UserSitePage({ params }: Props) {
   if (!site) notFound();
   // Resolved per request, not per cache entry: `{{date}}` on a page served
   // from a cached document must still be today.
-  return <Portfolio ctx={{ doc: resolveDynamic(site.doc), assets: site.assets }} analyticsSiteId={site.id} />;
+  const doc = resolveDynamic(site.doc);
+  return (
+    <>
+      <PersonJsonLd doc={doc} assets={site.assets} origin={appOrigin()} />
+      <Portfolio ctx={{ doc, assets: site.assets }} analyticsSiteId={site.id} />
+    </>
+  );
 }

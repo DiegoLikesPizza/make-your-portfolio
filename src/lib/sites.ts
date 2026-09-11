@@ -9,14 +9,14 @@ import { assetMap, type StoredAsset } from "@/lib/assets";
 
 /** Loading and publishing sites. */
 
-export type PublishedSite = { id: string; doc: PortfolioDoc; assets: AssetMap };
+export type PublishedSite = { id: string; subdomain: string; doc: PortfolioDoc; assets: AssetMap };
 
-type SiteRow = { id: string; publishedDoc: unknown; assets: StoredAsset[] } | null;
+type SiteRow = { id: string; subdomain: string; publishedDoc: unknown; assets: StoredAsset[] } | null;
 
 function toPublished(site: SiteRow): PublishedSite | null {
   // No row, or the owner has never pressed Publish.
   if (!site?.publishedDoc) return null;
-  return { id: site.id, doc: migrate(site.publishedDoc), assets: assetMap(site.assets) };
+  return { id: site.id, subdomain: site.subdomain, doc: migrate(site.publishedDoc), assets: assetMap(site.assets) };
 }
 
 /**

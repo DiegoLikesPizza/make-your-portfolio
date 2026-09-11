@@ -104,6 +104,12 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
         <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900 dark:text-neutral-50">Search &amp; sharing</h3>
         <TextInput label="Page title" value={doc.meta.title} onChange={(title) => setMeta({ title })} />
         <TextArea label="Description" rows={3} value={doc.meta.description} onChange={(description) => setMeta({ description })} />
+        <AssetInput
+          label="Share image"
+          value={doc.meta.ogAssetId}
+          hint="Shown when a link to your page is shared. Without one, a card is drawn from your name and headline."
+          onChange={(ogAssetId) => setMeta({ ogAssetId })}
+        />
       </section>
     </div>
   );
