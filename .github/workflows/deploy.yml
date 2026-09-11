@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  # After CI finishes on main. The job below only proceeds when it passed.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Redeploy the tip of main by hand, from the Actions tab.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Deploys queue rather than cancel: stopping one mid-build leaves the box half
+# built, and the lock in redeploy.sh would refuse the next anyway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # A passing CI run for a push to main — not a pull request that targets main.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 20
+    steps:
+      - name: Check deploy is configured
+        id: configured
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::notice::Deploy secrets are not set, so nothing was deployed. See README → Automatic deploys."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        if: steps.configured.outputs.ready == 'true'
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          # The commit CI tested, not whatever main points at by the time this runs.
+          SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          # Pinned host key: never trust whatever happens to answer on the IP.
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+          # The key is pinned to deploy/redeploy.sh on the box, so the only
+          # thing this sends is which commit to deploy.
+          ssh -i ~/.ssh/deploy_key \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$DEPLOY_USER@$HOST" "$SHA"
