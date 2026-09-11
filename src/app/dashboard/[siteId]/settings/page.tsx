@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { getCurrentUser, requireSiteOwner } from "@/lib/auth";
 import { APP_DOMAIN } from "@/lib/hosts";
 import { ownershipRecord, requiredRecord } from "@/lib/dns";
+import { documentsUseAsset, resolveAsset } from "@/lib/assets";
 import { Card, DashboardShell } from "@/components/dashboard/Shell";
 import { DomainManager } from "./DomainManager";
-import { DeleteSiteForm, HandleForm, PreviewLink, PublishState, VersionHistory } from "./SiteForms";
+import { DeleteSiteForm, HandleForm, PreviewLink, PublishState, UploadsManager, VersionHistory } from "./SiteForms";
 
 export const metadata = { title: "Settings" };
 
@@ -26,15 +27,19 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
   const owned = await requireSiteOwner(siteId);
   if (!owned) notFound();
 
-  const [domains, versions] = await Promise.all([
+  const [domains, versions, uploads] = await Promise.all([
     db.domain.findMany({ where: { siteId }, orderBy: { createdAt: "asc" } }),
     db.siteVersion.findMany({
       where: { siteId },
       orderBy: { publishedAt: "desc" },
-      select: { id: true, publishedAt: true },
+      select: { id: true, publishedAt: true, doc: true },
     }),
+    db.asset.findMany({ where: { siteId }, orderBy: { createdAt: "desc" } }),
   ]);
   const serverIp = process.env.SERVER_IP;
+
+  // Everything that can still point at an upload: the draft, the live page and every saved version.
+  const documents = [owned.site.draftDoc, owned.site.publishedDoc, ...versions.map((v) => v.doc)];
 
   return (
     <DashboardShell siteId={siteId} current="settings" title="Settings">
@@ -85,9 +90,24 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
       </Card>
 
       <Card
+        title="Uploads"
+        hint="Images and GIFs uploaded in the editor. One that your draft, the live page or a saved version still uses can't be deleted."
+      >
+        <UploadsManager
+          siteId={siteId}
+          uploads={uploads.map((asset) => ({
+            id: asset.id,
+            src: resolveAsset(asset).src,
+            bytes: asset.bytes,
+            inUse: documentsUseAsset(documents, asset.id),
+          }))}
+        />
+      </Card>
+
+      <Card
         title="Delete site"
         tone="danger"
-        hint="Removes the site, its draft, every connected domain and every view it has recorded. Your account stays."
+        hint="Removes the site, its draft, every connected domain, every upload and every view it has recorded. Your account stays."
       >
         <DeleteSiteForm siteId={siteId} subdomain={owned.site.subdomain} />
       </Card>

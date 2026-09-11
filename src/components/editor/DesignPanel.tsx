@@ -2,6 +2,7 @@
 
 import type { Design } from "@/lib/schema/portfolio";
 import { ColorInput, Select, Toggle } from "./fields";
+import { BackgroundEditor } from "./BackgroundEditor";
 import { PRESETS } from "@/presets";
 
 /**
@@ -135,6 +136,10 @@ export function DesignPanel({ design, onChange }: { design: Design; onChange: (n
         <p className="text-xs text-neutral-400 dark:text-neutral-500">
           Greys, borders and muted text are derived from these three, so they stay in tune automatically.
         </p>
+      </Group>
+
+      <Group title="Background">
+        <BackgroundEditor value={design.background} onChange={(background) => set({ background })} />
       </Group>
 
       <Group title="Footer">

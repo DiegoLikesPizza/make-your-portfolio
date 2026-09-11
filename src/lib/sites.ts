@@ -5,17 +5,18 @@ import { migrate } from "@/lib/schema/portfolio";
 import type { AssetMap } from "@/render/context";
 import { resolveHost, SITES_ON_SUBDOMAINS, APP_DOMAIN } from "@/lib/hosts";
 import { versionsToPrune } from "@/lib/versions";
+import { assetMap, type StoredAsset } from "@/lib/assets";
 
 /** Loading and publishing sites. */
 
 export type PublishedSite = { id: string; doc: PortfolioDoc; assets: AssetMap };
 
-type SiteRow = { id: string; publishedDoc: unknown } | null;
+type SiteRow = { id: string; publishedDoc: unknown; assets: StoredAsset[] } | null;
 
 function toPublished(site: SiteRow): PublishedSite | null {
   // No row, or the owner has never pressed Publish.
   if (!site?.publishedDoc) return null;
-  return { id: site.id, doc: migrate(site.publishedDoc), assets: {} };
+  return { id: site.id, doc: migrate(site.publishedDoc), assets: assetMap(site.assets) };
 }
 
 /**
@@ -25,7 +26,7 @@ function toPublished(site: SiteRow): PublishedSite | null {
  * every published site.
  */
 async function loadByHandle(handle: string): Promise<PublishedSite | null> {
-  return toPublished(await db.site.findUnique({ where: { subdomain: handle } }));
+  return toPublished(await db.site.findUnique({ where: { subdomain: handle }, include: { assets: true } }));
 }
 
 /** By hostname — a custom domain, or a subdomain when that mode is enabled. */
@@ -40,6 +41,7 @@ async function loadByHost(host: string): Promise<PublishedSite | null> {
       // An unverified custom domain must not resolve: verification is what
       // gates certificate issuance, so serving it would be inconsistent.
       where: { domains: { some: { hostname: target.hostname, verified: true } } },
+      include: { assets: true },
     }),
   );
 }

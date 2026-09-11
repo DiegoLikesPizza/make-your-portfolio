@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useTransition, useState, useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { ASSET_LIMITS } from "@/lib/assets";
 import {
   createPreviewLink, deleteSite, renameHandle, revokePreviewLink, unpublishSite, type SiteState,
 } from "@/app/actions/site";
@@ -231,6 +233,78 @@ export function VersionHistory({
       <div className="mt-2">
         <Result state={state} />
       </div>
+    </div>
+  );
+}
+
+const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+/**
+ * The site's uploads, with their size and whether anything still uses them.
+ *
+ * Only unused ones offer Delete: the server refuses the rest anyway, and
+ * saying why up front beats a button that fails.
+ */
+export function UploadsManager({
+  siteId, uploads,
+}: {
+  siteId: string;
+  uploads: { id: string; src: string; bytes: number; inUse: boolean }[];
+}) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [error, setError] = useState<string>();
+
+  if (uploads.length === 0) {
+    return (
+      <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+        Nothing uploaded yet. Add images from the editor.
+      </p>
+    );
+  }
+
+  const remove = (assetId: string) =>
+    start(async () => {
+      setError(undefined);
+      const response = await fetch(`/api/sites/${siteId}/assets/${assetId}`, { method: "DELETE" });
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        setError(json.error ?? "That upload couldn't be deleted.");
+      }
+      router.refresh();
+    });
+
+  const total = uploads.reduce((sum, upload) => sum + upload.bytes, 0);
+
+  return (
+    <div className="mt-3">
+      <p className="text-xs text-neutral-500 dark:text-neutral-400">
+        {uploads.length} of {ASSET_LIMITS.assetsPerSite} files · {megabytes(total)} of {megabytes(ASSET_LIMITS.bytesPerSite)}
+      </p>
+      <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {uploads.map((upload) => (
+          <li key={upload.id} className="rounded-md border border-neutral-200 p-2 dark:border-neutral-800">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={upload.src} alt="" className="aspect-square w-full rounded object-cover" />
+            <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+              <span className="text-neutral-500">{megabytes(upload.bytes)}</span>
+              {upload.inUse ? (
+                <span className="text-neutral-400">In use</span>
+              ) : (
+                <ConfirmButton
+                  label="Delete"
+                  question="Delete it?"
+                  confirmLabel="Delete"
+                  pending={pending}
+                  onConfirm={() => remove(upload.id)}
+                  className="text-xs text-red-600 underline-offset-4 hover:underline disabled:opacity-40 dark:text-red-400"
+                />
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+      {error && <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

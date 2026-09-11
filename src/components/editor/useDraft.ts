@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
+import type { AssetMap } from "@/render/context";
 
 export type SaveState = "idle" | "saving" | "saved" | "conflict" | "error";
 
@@ -15,7 +16,7 @@ export type SaveState = "idle" | "saving" | "saved" | "conflict" | "error";
 const PREVIEW_MS = 150;
 const SAVE_MS = 800;
 
-export function useDraft(siteId: string, initialDoc: PortfolioDoc, initialUpdatedAt: string) {
+export function useDraft(siteId: string, initialDoc: PortfolioDoc, initialUpdatedAt: string, assets: AssetMap) {
   const [doc, setDoc] = useState(initialDoc);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
@@ -23,10 +24,13 @@ export function useDraft(siteId: string, initialDoc: PortfolioDoc, initialUpdate
   const previewFrame = useRef<HTMLIFrameElement | null>(null);
   const dirty = useRef(false);
 
-  /** Push the current document into the preview iframe. */
-  const pushPreview = useCallback((next: PortfolioDoc) => {
-    previewFrame.current?.contentWindow?.postMessage({ type: "portfolio:doc", doc: next }, window.location.origin);
-  }, []);
+  /** Push the current document, and the uploads it may use, into the preview iframe. */
+  const pushPreview = useCallback(
+    (next: PortfolioDoc) => {
+      previewFrame.current?.contentWindow?.postMessage({ type: "portfolio:doc", doc: next, assets }, window.location.origin);
+    },
+    [assets],
+  );
 
   const save = useCallback(
     async (next: PortfolioDoc) => {
@@ -67,7 +71,7 @@ export function useDraft(siteId: string, initialDoc: PortfolioDoc, initialUpdate
     return () => clearTimeout(t);
   }, [doc, save]);
 
-  // Debounced preview push.
+  // Debounced preview push, on a document change or a new upload.
   useEffect(() => {
     const t = setTimeout(() => pushPreview(doc), PREVIEW_MS);
     return () => clearTimeout(t);

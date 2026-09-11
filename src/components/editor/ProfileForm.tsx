@@ -3,6 +3,8 @@
 import { nanoid } from "nanoid";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import { Select, TextArea, TextInput, UrlInput } from "./fields";
+import { AssetInput } from "./AssetInput";
+import { BackgroundEditor } from "./BackgroundEditor";
 import { ListEditor } from "./ListEditor";
 import { RichTextArea } from "./RichText";
 import { ICON_OPTIONS } from "./options";
@@ -45,6 +47,21 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
           onChange={(headline) => setProfile({ headline })}
         />
         <TextArea label="Intro" rows={3} value={p.bio} onChange={(bio) => setProfile({ bio })} />
+        <AssetInput
+          label="Portrait"
+          value={p.avatarAssetId}
+          hint="Shown by the hero layouts that have a portrait."
+          onChange={(avatarAssetId) => setProfile({ avatarAssetId })}
+        />
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-neutral-900 dark:text-neutral-50">Hero background</h3>
+        <BackgroundEditor
+          value={doc.hero.background}
+          noneLabel="Same as the page"
+          onChange={(background) => onChange({ ...doc, hero: { ...doc.hero, background } })}
+        />
       </section>
 
       <ListEditor

@@ -59,8 +59,8 @@ export function Cover({
   height?: number;
   className?: string;
 }) {
-  // Until uploads land (step 7) an assigned cover has no URL yet; render a
-  // neutral placeholder so the layout still reads correctly.
+  // A cover id with no upload behind it (a demo fixture, or a deleted file)
+  // renders a neutral placeholder so the layout still reads correctly.
   if (!src) {
     return assetId ? <div className={`bg-[var(--background-secondary)] ${className ?? ""}`} aria-hidden /> : null;
   }

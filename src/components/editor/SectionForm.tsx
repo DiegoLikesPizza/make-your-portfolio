@@ -3,6 +3,7 @@
 import { nanoid } from "nanoid";
 import type { Section } from "@/lib/schema/sections";
 import { Select, TextArea, TextInput, UrlInput } from "./fields";
+import { AssetInput } from "./AssetInput";
 import { ListEditor } from "./ListEditor";
 import { CommaListInput, keepIds, LineListInput } from "./TokenField";
 import { RichTextArea } from "./RichText";
@@ -35,6 +36,12 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
             value={d.footnote ?? ""}
             hint="Shown by Two-col index and Centered narrow."
             onChange={(footnote) => set({ footnote })}
+          />
+          <AssetInput
+            label="Image"
+            value={d.imageAssetId}
+            hint="Only Portrait left displays it."
+            onChange={(imageAssetId) => set({ imageAssetId })}
           />
           <ListEditor
             label="Stat"
@@ -102,6 +109,12 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
               <TextInput label="Year" value={p.year ?? ""} onChange={(year) => update({ year })} />
               <Select label="Status" value={p.status} options={STATUS_OPTIONS} onChange={(status) => update({ status })} />
               <UrlInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
+              <AssetInput
+                label="Cover"
+                value={p.coverAssetId}
+                hint="Shown by the layouts with images."
+                onChange={(coverAssetId) => update({ coverAssetId })}
+              />
               <TextInput label="Link label" value={p.linkLabel ?? ""} onChange={(linkLabel) => update({ linkLabel })} />
             </>
           )}
@@ -260,6 +273,12 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
               <TextArea label="Quote" rows={4} value={t.quote} onChange={(quote) => update({ quote })} />
               <TextInput label="Author" value={t.author} onChange={(author) => update({ author })} />
               <TextInput label="Role" value={t.role ?? ""} onChange={(role) => update({ role })} />
+              <AssetInput
+                label="Photo"
+                value={t.avatarAssetId}
+                hint="Shown next to the name where the layout has room."
+                onChange={(avatarAssetId) => update({ avatarAssetId })}
+              />
             </>
           )}
         />
@@ -272,12 +291,17 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
         <ListEditor
           label="Image"
           items={d.items}
-          hint="Uploads land in step 7; captions and links work now."
+          hint="JPEG, PNG, WebP, AVIF or GIF. Captions and links are optional."
           onChange={(items) => onChange({ ...section, data: { items } })}
           create={() => ({ id: nanoid(8), assetId: "" })}
           title={(g) => g.caption || "Image"}
           render={(g, update) => (
             <>
+              <AssetInput
+                label="Image"
+                value={g.assetId || undefined}
+                onChange={(assetId) => update({ assetId: assetId ?? "" })}
+              />
               <TextInput label="Caption" value={g.caption ?? ""} onChange={(caption) => update({ caption })} />
               <UrlInput label="Link" value={g.href ?? ""} onChange={(href) => update({ href })} />
             </>
