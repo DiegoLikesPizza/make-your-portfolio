@@ -49,6 +49,12 @@ prisma/*.db-journal
 # Vercel / deployment
 .vercel
 
+# On the box: releases, the live symlink and pm2's copy of start.sh (deploy/redeploy.sh)
+/releases/
+/live
+/live.next
+/start.sh
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

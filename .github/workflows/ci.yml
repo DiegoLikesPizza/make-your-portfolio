@@ -43,5 +43,9 @@ jobs:
       - run: npm test
       - run: npm run build
 
+      # Needs Linux (symlinks, flock), which is why it runs here and not locally.
+      - name: Deploy script
+        run: bash deploy/test-redeploy.sh
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
