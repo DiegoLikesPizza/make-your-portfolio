@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { fontVariables } from "./fonts";
 import "./globals.css";
 
@@ -7,7 +8,12 @@ export const metadata: Metadata = {
   description: "Build and publish a one-page portfolio in minutes.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Every page renders per request. The Content-Security-Policy carries a nonce
+  // minted for each response (src/proxy.ts), and a page prerendered at build
+  // time would ship its scripts without one — which the policy refuses to run.
+  await connection();
+
   return (
     <html lang="en" suppressHydrationWarning>
       {/* The app shell must paint its own background. Several pages use

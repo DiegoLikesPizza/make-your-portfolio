@@ -17,13 +17,10 @@ import { resolveDynamic } from "@/lib/dynamic";
 
 type Props = { params: Promise<{ preset: string }> };
 
-export function generateStaticParams() {
-  return DEMO_HANDLES.map((preset) => ({ preset }));
-}
-
+// Not prerendered: every page renders per request so its scripts carry the
+// response's CSP nonce (see the root layout). That also means a dynamic value
+// in a demo is as of this request, not of the last build.
 function docFor(preset: string) {
-  // Prerendered, so a dynamic value here is as of the last build rather than
-  // of this request. The demo fixture keeps to values that don't change daily.
   return DEMO_HANDLES.includes(preset) ? resolveDynamic(demoDoc(preset)) : null;
 }
 

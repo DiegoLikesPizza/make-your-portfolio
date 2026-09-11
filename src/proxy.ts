@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { contentSecurityPolicy } from "@/lib/csp";
 import { normalizeHost, resolveHost } from "@/lib/hosts";
 
 /**
@@ -8,11 +9,29 @@ import { normalizeHost, resolveHost } from "@/lib/hosts";
  * Published sites are one-pagers, so there is no per-site routing to do — every
  * site host rewrites to the single `/site/[host]` route, which re-resolves the
  * host with the same function and renders the site.
+ *
+ * Every page also gets its Content-Security-Policy here, because the policy
+ * carries a nonce that must be new for each response (see src/lib/csp.ts). It
+ * is set on the forwarded request, which is where Next reads the nonce from to
+ * stamp its scripts, and on the response, which is what the browser enforces.
  */
 export default function proxy(request: NextRequest) {
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const policy = contentSecurityPolicy(nonce, process.env.NODE_ENV === "development");
+
+  const headers = new Headers(request.headers);
+  headers.set("Content-Security-Policy", policy);
+
+  const response = route(request, headers);
+  response.headers.set("Content-Security-Policy", policy);
+  return response;
+}
+
+/** The dashboard as-is, or a site host rewritten to its page. */
+function route(request: NextRequest, headers: Headers) {
   const host = normalizeHost(request.headers.get("host") ?? "");
 
-  if (resolveHost(host).kind === "app") return NextResponse.next();
+  if (resolveHost(host).kind === "app") return NextResponse.next({ request: { headers } });
 
   const url = new URL(`/site/${encodeURIComponent(host)}`, request.url);
   url.search = request.nextUrl.search;
@@ -31,7 +50,7 @@ export default function proxy(request: NextRequest) {
     url.protocol = "http:";
   }
 
-  return NextResponse.rewrite(url);
+  return NextResponse.rewrite(url, { request: { headers } });
 }
 
 // Everything except Next internals, the API, and paths that look like a file.
