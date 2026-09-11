@@ -104,16 +104,52 @@ for ports 80/443 and could have taken three live sites down.
 | Web | `/etc/nginx/sites-available/make-your-portfolio.lfdiego.xyz` |
 | Assets | `/srv/websites/make-your-portfolio.lfdiego.xyz/data/assets` |
 
-Redeploy:
+Redeploy: merging to `main` deploys automatically once CI passes (see *Automatic deploys* below).
+By hand, on the box:
 
 ```bash
-cd /srv/websites/make-your-portfolio.lfdiego.xyz/app
-export PATH=/opt/node22/bin:$PATH
-git pull
-npm install --no-audit && npx prisma generate && npx prisma migrate deploy && npm run build
-cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/
-pm2 restart make-your-portfolio
+/srv/websites/make-your-portfolio.lfdiego.xyz/app/deploy/redeploy.sh
 ```
+
+[`deploy/redeploy.sh`](deploy/redeploy.sh) fast-forwards to `origin/main`, runs `npm install`,
+`npx prisma generate`, `npx prisma migrate deploy` and `npm run build`, copies `public` and
+`.next/static` into the standalone build, restarts pm2, and fails unless the app answers afterwards.
+It holds a lock, so two deploys never overlap.
+
+#### Automatic deploys
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs after CI passes on a push to
+`main` (or by hand from the Actions tab) and SSHes into the box to run `redeploy.sh` for the exact
+commit CI tested. Until the secrets below exist it skips with a notice instead of failing.
+
+One-time setup:
+
+1. Make a key just for this, on your own machine:
+
+   ```bash
+   ssh-keygen -t ed25519 -f make-your-portfolio-deploy -N "" -C github-deploy
+   ```
+
+2. On the box, as the user that owns the app directory and the pm2 process, append the **public**
+   key to `~/.ssh/authorized_keys`, pinned to the deploy script so it can do nothing else:
+
+   ```text
+   command="/srv/websites/make-your-portfolio.lfdiego.xyz/app/deploy/redeploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… github-deploy
+   ```
+
+3. In GitHub → *Settings → Secrets and variables → Actions*, add:
+
+   | Secret | Value |
+   |---|---|
+   | `DEPLOY_HOST` | `5.75.165.180` |
+   | `DEPLOY_USER` | the user from step 2 |
+   | `DEPLOY_SSH_KEY` | the contents of the **private** key file `make-your-portfolio-deploy` |
+   | `DEPLOY_KNOWN_HOSTS` | the output of `ssh-keyscan -t ed25519 5.75.165.180` — check its fingerprint against `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` run on the box |
+
+4. Delete the private key file from your machine, then run *Deploy* once from the Actions tab.
+
+A deploy rebuilds in place, so the site can answer with errors for the minute or two `npm run build`
+takes — the same as a manual redeploy.
 
 `npx prisma generate` is not optional. `src/generated/prisma` is gitignored, so
 a pull never brings a client that knows about a new model — the build fails
