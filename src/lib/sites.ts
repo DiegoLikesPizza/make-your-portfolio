@@ -4,6 +4,7 @@ import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import { migrate } from "@/lib/schema/portfolio";
 import type { AssetMap } from "@/render/context";
 import { resolveHost, SITES_ON_SUBDOMAINS, APP_DOMAIN } from "@/lib/hosts";
+import { versionsToPrune } from "@/lib/versions";
 
 /** Loading and publishing sites. */
 
@@ -80,4 +81,39 @@ export async function revalidateSite(handle: string, hostnames: string[]) {
     // which serving the previous document is acceptable.
     revalidateTag(tag, { expire: 0 });
   }
+}
+
+/**
+ * Put a document live and keep it as a version.
+ *
+ * The one definition of publishing: the editor's Publish and republishing an old
+ * version both come through here, so both are recorded, both prune the history
+ * and both drop the same caches. The version shares the site's `publishedAt`,
+ * which is how the dashboard knows which one is live.
+ */
+export async function publishDocument(siteId: string, doc: PortfolioDoc) {
+  const publishedAt = new Date();
+
+  const site = await db.$transaction(async (tx) => {
+    const updated = await tx.site.update({
+      where: { id: siteId },
+      data: { publishedDoc: doc, publishedAt },
+      select: { subdomain: true, domains: { select: { hostname: true } } },
+    });
+
+    await tx.siteVersion.create({ data: { siteId, doc, publishedAt } });
+
+    const versions = await tx.siteVersion.findMany({
+      where: { siteId },
+      orderBy: { publishedAt: "desc" },
+      select: { id: true },
+    });
+    const prune = versionsToPrune(versions.map((v) => v.id));
+    if (prune.length > 0) await tx.siteVersion.deleteMany({ where: { id: { in: prune } } });
+
+    return updated;
+  });
+
+  await revalidateSite(site.subdomain, site.domains.map((d) => d.hostname));
+  return { publishedAt, subdomain: site.subdomain };
 }

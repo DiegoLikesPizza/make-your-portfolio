@@ -14,6 +14,7 @@ import { portfolioMetadata } from "../src/lib/portfolio-metadata";
 import { isHandleCoolingDown } from "../src/lib/handles";
 import { afterScheduledCheck, FAILED_CHECKS_BEFORE_UNVERIFY, recheckToken } from "../src/lib/domain-recheck";
 import { isPreviewToken, newPreviewToken } from "../src/lib/preview-links";
+import { VERSIONS_KEPT, versionsToPrune } from "../src/lib/versions";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -508,4 +509,24 @@ expectPreview("a token with a stray character is not a token", !isPreviewToken(`
 const previewCases = 5;
 console.log(`\n${previewCases - previewFailures}/${previewCases} preview link cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures ? 1 : 0);
+// ------------------------------------------------------- published versions
+let versionFailures = 0;
+const expectVersions = (label: string, ok: boolean, detail = "") => {
+  if (!ok) versionFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}versions ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const ids = (count: number) => Array.from({ length: count }, (_, i) => `v${i}`);
+expectVersions("fewer than the limit prunes nothing", versionsToPrune(ids(5)).length === 0);
+expectVersions("exactly the limit prunes nothing", versionsToPrune(ids(VERSIONS_KEPT)).length === 0);
+const pruned = versionsToPrune(ids(VERSIONS_KEPT + 2));
+expectVersions(
+  "past the limit prunes the oldest",
+  pruned.join(",") === `v${VERSIONS_KEPT},v${VERSIONS_KEPT + 1}`,
+  `(got ${pruned.join(",")})`,
+);
+
+const versionCases = 3;
+console.log(`\n${versionCases - versionFailures}/${versionCases} published version cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures ? 1 : 0);

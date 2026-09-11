@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
 import { requireSiteOwner } from "@/lib/auth";
 import { portfolioDoc } from "@/lib/schema/portfolio";
-import { revalidateSite } from "@/lib/sites";
+import { publishDocument } from "@/lib/sites";
 
 /**
  * Publish: copy the draft to the published document.
@@ -25,19 +24,10 @@ export async function POST(_request: Request, { params }: { params: Promise<{ si
     );
   }
 
-  const published = await db.site.update({
-    where: { id: siteId },
-    data: { publishedDoc: parsed.data, publishedAt: new Date() },
-    select: { publishedAt: true, subdomain: true, domains: { select: { hostname: true } } },
-  });
-
-  await revalidateSite(
-    published.subdomain,
-    published.domains.map((d) => d.hostname),
-  );
+  const { publishedAt, subdomain } = await publishDocument(siteId, parsed.data);
 
   return NextResponse.json({
-    publishedAt: published.publishedAt?.toISOString(),
-    url: `/u/${published.subdomain}`,
+    publishedAt: publishedAt.toISOString(),
+    url: `/u/${subdomain}`,
   });
 }

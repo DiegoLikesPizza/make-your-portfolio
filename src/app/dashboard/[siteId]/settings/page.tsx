@@ -5,7 +5,7 @@ import { APP_DOMAIN } from "@/lib/hosts";
 import { ownershipRecord, requiredRecord } from "@/lib/dns";
 import { Card, DashboardShell } from "@/components/dashboard/Shell";
 import { DomainManager } from "./DomainManager";
-import { DeleteSiteForm, HandleForm, PreviewLink, PublishState } from "./SiteForms";
+import { DeleteSiteForm, HandleForm, PreviewLink, PublishState, VersionHistory } from "./SiteForms";
 
 export const metadata = { title: "Settings" };
 
@@ -26,7 +26,14 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
   const owned = await requireSiteOwner(siteId);
   if (!owned) notFound();
 
-  const domains = await db.domain.findMany({ where: { siteId }, orderBy: { createdAt: "asc" } });
+  const [domains, versions] = await Promise.all([
+    db.domain.findMany({ where: { siteId }, orderBy: { createdAt: "asc" } }),
+    db.siteVersion.findMany({
+      where: { siteId },
+      orderBy: { publishedAt: "desc" },
+      select: { id: true, publishedAt: true },
+    }),
+  ]);
   const serverIp = process.env.SERVER_IP;
 
   return (
@@ -44,6 +51,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
         hint="Share the draft before you publish. Anyone with the link can see it; it isn't indexed or counted in analytics."
       >
         <PreviewLink siteId={siteId} token={owned.site.previewToken} />
+      </Card>
+
+      <Card
+        title="Published versions"
+        hint="Every publish is kept, newest 20. Open one in the editor, or put it live again."
+      >
+        <VersionHistory
+          siteId={siteId}
+          versions={versions.map((v) => ({ id: v.id, publishedAt: v.publishedAt.toISOString() }))}
+          livePublishedAt={owned.site.publishedAt?.toISOString() ?? null}
+        />
       </Card>
 
       <Card

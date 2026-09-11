@@ -78,6 +78,13 @@ the custom hostname were each edited somewhere different.
 - **Published** — when it went live, and *Take offline*, which clears
   `publishedDoc` and leaves the draft alone. (A `published` boolean would leave
   a stale document in the row for a later bug to serve.)
+- **Published versions** — every publish is kept as a version, newest 20 per
+  site. *Open in editor* replaces the draft with an old version (asking first,
+  because it overwrites unsaved work) and leaves the live page alone; *Publish
+  this version* puts it live again and is itself recorded as a new version, so
+  going back can be undone too. Both the editor's Publish and republishing go
+  through `publishDocument` in `src/lib/sites.ts`, the one definition of
+  publishing.
 - **Preview link** — a private `/p/<token>` link that shows the **draft** to
   whoever has it, for asking someone's opinion before publishing. The token is
   32 random bytes and is the only access control, so the page is never indexed
