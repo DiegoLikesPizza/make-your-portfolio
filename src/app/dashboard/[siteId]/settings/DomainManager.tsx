@@ -3,20 +3,22 @@
 import { useActionState, useState, useTransition } from "react";
 import { addDomain, removeDomain, verifyDomain, type DomainState } from "@/app/actions/domains";
 import { formatDateTime } from "@/lib/dates";
+import type { DnsRecord } from "@/lib/dns";
 
 type DomainRow = {
   id: string;
   hostname: string;
   verified: boolean;
   lastCheckedAt: string | null;
-  record: { type: "A" | "CNAME"; name: string; value: string };
+  records: DnsRecord[];
 };
 
 /**
  * Connecting a customer's own domain.
  *
- * The DNS record is shown verbatim in the shape a registrar's panel asks for,
- * because "point your domain at us" is where people get stuck.
+ * The DNS records are shown verbatim in the shape a registrar's panel asks for,
+ * because "point your domain at us" is where people get stuck. There are two:
+ * the TXT record proves the domain is theirs, the A/CNAME sends traffic here.
  */
 export function DomainManager({
   siteId, domains, serverIp,
@@ -88,14 +90,21 @@ export function DomainManager({
             </div>
 
             {!d.verified && (
-              <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-md bg-neutral-50 p-3 font-mono text-xs dark:bg-neutral-900">
-                <dt className="text-neutral-500">Type</dt>
-                <dd className="text-neutral-900 dark:text-white">{d.record.type}</dd>
-                <dt className="text-neutral-500">Name</dt>
-                <dd className="text-neutral-900 dark:text-white">{d.record.name}</dd>
-                <dt className="text-neutral-500">Value</dt>
-                <dd className="break-all text-neutral-900 dark:text-white">{d.record.value}</dd>
-              </dl>
+              <div className="mt-4 space-y-2">
+                {d.records.map((r) => (
+                  <dl
+                    key={r.type}
+                    className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-md bg-neutral-50 p-3 font-mono text-xs dark:bg-neutral-900"
+                  >
+                    <dt className="text-neutral-500">Type</dt>
+                    <dd className="text-neutral-900 dark:text-white">{r.type}</dd>
+                    <dt className="text-neutral-500">Name</dt>
+                    <dd className="text-neutral-900 dark:text-white">{r.name}</dd>
+                    <dt className="text-neutral-500">Value</dt>
+                    <dd className="break-all text-neutral-900 dark:text-white">{r.value}</dd>
+                  </dl>
+                ))}
+              </div>
             )}
 
             <div className="mt-3 flex items-center gap-4">

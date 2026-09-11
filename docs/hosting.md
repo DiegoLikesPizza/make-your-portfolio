@@ -15,19 +15,27 @@ record at a literal, and it is how the dev server gets reached over the LAN.
 
 ## Connecting a customer's domain
 
-1. **Add it** on Settings. The record to create is shown in the shape a
+1. **Add it** on Settings. The records to create are shown in the shape a
    registrar's panel asks for, because "point your domain at us" is where people
    get stuck.
 
-   | Kind of name | Record |
+   | Record | Why |
    |---|---|
-   | Subdomain (`portfolio.you.com`) | `CNAME` → the app domain |
-   | Apex (`you.com`) | `A` → `SERVER_IP` |
+   | `TXT` `_portfolio-verify` → `portfolio-verify=<token>` | Proves the person adding the domain controls it |
+   | `A` → `SERVER_IP` (or `CNAME` → the app domain) | Sends the traffic here |
+
+   Adding a domain reserves the name for **7 days**. A claim nobody verifies in
+   that time stops blocking others, so a domain can't be squatted by adding it
+   and walking away.
 
 2. **Verify.** A real DNS lookup, not a trust-the-user checkbox — verification is
-   what gates certificate issuance. A CNAME flattened by the provider
-   (Cloudflare does this) resolves to our address instead, which is equally
-   valid and accepted.
+   what gates certificate issuance. It needs **both** records: every customer's
+   domain resolves to the same address, so an address check alone proves the
+   name points at the platform, not that it belongs to this account. Without
+   the TXT token, a domain that still pointed here after its owner removed it
+   could be claimed by anyone. A CNAME flattened by the provider (Cloudflare
+   does this) resolves to our address instead, which is equally valid and
+   accepted.
 
    When `SERVER_IP` is unset the check falls back to resolving `APP_DOMAIN`:
    whatever that points at is by definition where visitors reach us. Without

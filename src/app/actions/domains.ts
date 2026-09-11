@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireSiteOwner } from "@/lib/auth";
 import { normalizeHost, APP_DOMAIN } from "@/lib/hosts";
 import { checkDomain } from "@/lib/dns";
+import { isStaleClaim } from "@/lib/domain-claims";
 import { revalidateHost } from "@/lib/sites";
 import { issueCertificate } from "@/lib/certs";
 
@@ -29,8 +30,16 @@ export async function addDomain(siteId: string, _prev: DomainState, formData: Fo
     return { error: "That domain belongs to this app." };
   }
 
-  const taken = await db.domain.findUnique({ where: { hostname } });
-  if (taken) return { error: "That domain is already connected to a site." };
+  const existing = await db.domain.findUnique({ where: { hostname } });
+  if (existing) {
+    // Re-adding would mint a new token and invalidate a TXT record the owner
+    // may already have created.
+    if (existing.siteId === siteId) return { error: "That domain is already on this site." };
+    if (!isStaleClaim(existing)) return { error: "That domain is already connected to a site." };
+
+    // Nobody proved they own it in time, so it no longer reserves the name.
+    await db.domain.delete({ where: { id: existing.id } });
+  }
 
   await db.domain.create({
     data: { siteId, hostname, verifyToken: randomBytes(16).toString("hex") },
@@ -41,7 +50,7 @@ export async function addDomain(siteId: string, _prev: DomainState, formData: Fo
   // domain starts responding the moment it is verified rather than never.
   await revalidateHost(hostname);
   revalidatePath(`/dashboard/${siteId}/domains`);
-  return { ok: "Added. Create the DNS record below, then verify." };
+  return { ok: "Added. Create the DNS records below, then verify." };
 }
 
 export async function verifyDomain(siteId: string, domainId: string): Promise<DomainState> {
@@ -51,7 +60,7 @@ export async function verifyDomain(siteId: string, domainId: string): Promise<Do
   const domain = await db.domain.findFirst({ where: { id: domainId, siteId } });
   if (!domain) return { error: "Not found." };
 
-  const result = await checkDomain(domain.hostname, SERVER_IP);
+  const result = await checkDomain(domain.hostname, domain.verifyToken, SERVER_IP);
 
   await db.domain.update({
     where: { id: domain.id },

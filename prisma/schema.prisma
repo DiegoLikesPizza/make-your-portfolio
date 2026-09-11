@@ -130,6 +130,8 @@ model Domain {
   hostname String @unique
 
   verified      Boolean   @default(false)
+  /// Must appear as `portfolio-verify=<token>` in a TXT record at
+  /// `_portfolio-verify.<hostname>` — the proof that the zone is the user's.
   verifyToken   String
   lastCheckedAt DateTime?
   createdAt     DateTime  @default(now())

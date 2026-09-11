@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolveHost, normalizeHost } from "../src/lib/hosts";
 import { validateSubdomain, normalizeSubdomain } from "../src/lib/reserved-subdomains";
 import { resolveText, resolveDynamic } from "../src/lib/dynamic";
+import { hasOwnershipToken, ownershipRecord } from "../src/lib/dns";
+import { isStaleClaim } from "../src/lib/domain-claims";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -208,4 +210,47 @@ if (!untouched) dynFailures += 1;
 console.log(`${untouched ? "PASS " : "FAIL "}dynamic a document without placeholders is not cloned`);
 
 console.log(`\n${dynamicCases.length + 1 - dynFailures}/${dynamicCases.length + 1} dynamic value cases passed`);
-process.exit(failures + subFailures + pathFailures + dynFailures ? 1 : 0);
+
+// ------------------------------------------------------- domain ownership
+//
+// Every customer's domain resolves to the same address, so the TXT token is the
+// only thing that ties a hostname to one account.
+const TOKEN = "abc123";
+
+const ownershipCases: [string, string[][], boolean][] = [
+  ["exact record", [["portfolio-verify=abc123"]], true],
+  // A long TXT value arrives split into chunks; they are one value.
+  ["chunked record", [["portfolio-verify=", "abc123"]], true],
+  ["among other TXT records", [["v=spf1 -all"], ["portfolio-verify=abc123"]], true],
+  ["wrong token", [["portfolio-verify=zzz"]], false],
+  ["token without the prefix", [["abc123"]], false],
+  ["token as a substring", [["portfolio-verify=abc1234"]], false],
+  ["no records", [], false],
+];
+
+let domainFailures = 0;
+const expectDomain = (label: string, ok: boolean, detail = "") => {
+  if (!ok) domainFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}domain ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+for (const [label, records, expected] of ownershipCases) {
+  const actual = hasOwnershipToken(records, TOKEN);
+  expectDomain(`TXT ${label}`, actual === expected, `(got ${actual}, expected ${expected})`);
+}
+
+// Names are relative to the zone, the way a registrar's panel asks for them.
+const apexName = ownershipRecord("you.com", TOKEN).name;
+const subName = ownershipRecord("portfolio.you.com", TOKEN).name;
+expectDomain("TXT name for an apex domain", apexName === "_portfolio-verify", `(got ${apexName})`);
+expectDomain("TXT name for a subdomain", subName === "_portfolio-verify.portfolio", `(got ${subName})`);
+
+const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000);
+expectDomain("an unverified claim within a week still reserves the name", !isStaleClaim({ verified: false, createdAt: daysAgo(6) }, NOW));
+expectDomain("an unverified claim past a week no longer does", isStaleClaim({ verified: false, createdAt: daysAgo(8) }, NOW));
+expectDomain("a verified domain never goes stale", !isStaleClaim({ verified: true, createdAt: daysAgo(400) }, NOW));
+
+const domainCases = ownershipCases.length + 5;
+console.log(`\n${domainCases - domainFailures}/${domainCases} domain ownership cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures ? 1 : 0);
