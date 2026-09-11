@@ -9,6 +9,7 @@ import { normalizeSource } from "../src/lib/analytics";
 import { isSafeHref } from "../src/lib/schema/sections";
 import { migrate, portfolioDoc } from "../src/lib/schema/portfolio";
 import { starterDoc } from "../src/lib/fixtures/starter";
+import { contentSecurityPolicy } from "../src/lib/csp";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -366,4 +367,34 @@ expectHref("migrate leaves a safe link alone", migrate(withLink("https://example
 const hrefTotal = hrefCases.length + 3;
 console.log(`\n${hrefTotal - hrefFailures}/${hrefTotal} link scheme cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures ? 1 : 0);
+// ------------------------------------------------------- content security policy
+//
+// The policy is the thing that makes an XSS bug inert, so what it allows is
+// asserted directly rather than trusted to a code review.
+let cspFailures = 0;
+const expectCsp = (label: string, ok: boolean, detail = "") => {
+  if (!ok) cspFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}csp ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const directive = (policy: string, name: string) =>
+  policy.split("; ").find((d) => d.startsWith(`${name} `))?.slice(name.length + 1).split(" ") ?? [];
+
+const prod = contentSecurityPolicy("abc123", false);
+const dev = contentSecurityPolicy("abc123", true);
+const prodScripts = directive(prod, "script-src");
+
+expectCsp("scripts need this response's nonce", prodScripts.includes("'nonce-abc123'"), prod);
+expectCsp("chunks loaded by trusted script still run", prodScripts.includes("'strict-dynamic'"));
+expectCsp("no inline script without a nonce", !prodScripts.includes("'unsafe-inline'"));
+expectCsp("no eval in production", !prodScripts.includes("'unsafe-eval'"));
+expectCsp("eval only in development, for React's dev build", directive(dev, "script-src").includes("'unsafe-eval'"));
+expectCsp("framed only by this origin", directive(prod, "frame-ancestors").join(" ") === "'self'");
+expectCsp("no plugins", directive(prod, "object-src").join(" ") === "'none'");
+expectCsp("no <base> hijacking", directive(prod, "base-uri").join(" ") === "'self'");
+expectCsp("images from this origin only", !directive(prod, "img-src").includes("https:"));
+
+const cspCases = 9;
+console.log(`\n${cspCases - cspFailures}/${cspCases} content security policy cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures ? 1 : 0);

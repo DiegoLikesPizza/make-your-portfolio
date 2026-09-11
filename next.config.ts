@@ -10,18 +10,14 @@ const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "example.localhost";
  * Sent on every response, dashboard and portfolios alike: they share an origin
  * whenever a site is viewed at /u/<handle>.
  *
- * `frame-ancestors 'self'` rather than `'none'`, because the editor renders its
- * preview in a same-origin iframe. Any other site framing a page is refused,
- * which is what stops one-click actions like *Take offline* being clickjacked.
- *
- * There is deliberately no `script-src`. One worth having needs a nonce per
- * request, and Next can only attach nonces while rendering dynamically — every
- * page, the prerendered /d/<preset> demos included. That is a change to how the
- * app renders, not a header.
+ * The Content-Security-Policy is not here. It carries a nonce that must be new
+ * for every response, so src/proxy.ts sets it; a second, static policy here
+ * would be enforced alongside it and could only make it stricter by accident.
  */
 const securityHeaders = [
-  { key: "Content-Security-Policy", value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'" },
-  // For browsers that predate frame-ancestors.
+  // The proxy's policy says frame-ancestors 'self' for pages. This covers the
+  // responses it doesn't touch (API routes, files) and browsers that predate
+  // frame-ancestors. SAMEORIGIN, because the editor previews in an iframe.
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Links out still tell the destination which site sent the visitor, never the path.
