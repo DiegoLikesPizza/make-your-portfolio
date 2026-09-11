@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
+import { db } from "@/lib/db";
 import { getCurrentUser, requireSiteOwner } from "@/lib/auth";
+import { assetMap } from "@/lib/assets";
 import { migrate } from "@/lib/schema/portfolio";
 import { EditorApp } from "@/components/editor/EditorApp";
 import { SignOutButton } from "@/components/editor/SignOutButton";
@@ -19,12 +21,15 @@ export default async function EditPage({ params }: { params: Promise<{ siteId: s
   const owned = await requireSiteOwner(siteId);
   if (!owned) notFound();
 
+  const assets = assetMap(await db.asset.findMany({ where: { siteId } }));
+
   return (
     <EditorApp
       siteId={owned.site.id}
       subdomain={owned.site.subdomain}
       initialDoc={migrate(owned.site.draftDoc)}
       initialUpdatedAt={owned.site.updatedAt.toISOString()}
+      initialAssets={assets}
       publishedAt={owned.site.publishedAt?.toISOString() ?? null}
       signOutSlot={<SignOutButton />}
     />

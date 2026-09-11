@@ -31,7 +31,7 @@ data**, so switching Projects from `numbered-list` to `grid-3` to `table` never 
 | 4. Editor | **done** — content, design, autosave, publish |
 | 5. Variant catalog | **done** — 52/52 section variants, 8 nav, 8 hero |
 | 6. Presets | **done** — 6 |
-| 7. Uploads | **not started** — the only unbuilt piece. `Asset` is modelled; nothing writes it |
+| 7. Uploads | **done** — images and GIFs, resized to WebP (GIFs to MP4 where ffmpeg exists); see [docs/uploads.md](docs/uploads.md) |
 | 8. Custom domains | **done** — add, verify, on-demand TLS gate |
 | 9. Dashboard | **done** — account, analytics, settings; domains folded into settings |
 | 10. Write it for me | **done, unexercised** — needs `ANTHROPIC_API_KEY`; the live call has never run |

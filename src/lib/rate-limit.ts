@@ -25,6 +25,8 @@ export const LIMITS = {
   signInPerIp: { limit: 30, windowMs: HOUR },
   /** Each generation is a large model call billed to the server's key. */
   assistPerUser: { limit: 10, windowMs: DAY },
+  /** Each upload is decoded and resized several times, which is real work. */
+  uploadsPerUser: { limit: 60, windowMs: HOUR },
   /** A real visitor loads a page a handful of times a minute at most. */
   hitPerIp: { limit: 30, windowMs: MINUTE },
 } satisfies Record<string, RateLimitWindow>;

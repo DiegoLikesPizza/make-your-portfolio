@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { db } from "@/lib/db";
+import { assetMap } from "@/lib/assets";
 import { migrate } from "@/lib/schema/portfolio";
 import { resolveDynamic } from "@/lib/dynamic";
 import { isPreviewToken } from "@/lib/preview-links";
@@ -24,21 +25,24 @@ export const metadata: Metadata = {
 
 async function draftFor(token: string) {
   if (!isPreviewToken(token)) return null;
-  const site = await db.site.findUnique({ where: { previewToken: token }, select: { draftDoc: true } });
-  return site ? resolveDynamic(migrate(site.draftDoc)) : null;
+  const site = await db.site.findUnique({
+    where: { previewToken: token },
+    select: { draftDoc: true, assets: true },
+  });
+  return site ? { doc: resolveDynamic(migrate(site.draftDoc)), assets: assetMap(site.assets) } : null;
 }
 
 export default async function DraftPreviewPage({ params }: Props) {
   const { token } = await params;
-  const doc = await draftFor(token);
-  if (!doc) notFound();
+  const draft = await draftFor(token);
+  if (!draft) notFound();
 
   return (
     <>
       <p className="fixed bottom-4 left-1/2 z-[70] -translate-x-1/2 rounded-full bg-neutral-900/90 px-4 py-1.5 text-xs font-medium text-white shadow-lg">
         Draft preview — not published
       </p>
-      <Portfolio ctx={{ doc, assets: {} }} />
+      <Portfolio ctx={draft} />
     </>
   );
 }

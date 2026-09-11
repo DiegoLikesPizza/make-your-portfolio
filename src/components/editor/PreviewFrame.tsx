@@ -3,6 +3,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import { safeParseDoc } from "@/lib/schema/portfolio";
+import type { AssetMap } from "@/render/context";
 import { Portfolio } from "@/render/Portfolio";
 import { resolveDynamic } from "@/lib/dynamic";
 
@@ -16,8 +17,9 @@ const subscribe = () => () => {};
  * schema: this frame renders whatever it is handed, so "it came from our own
  * editor" has to be verified rather than assumed.
  */
-export function PreviewFrame({ initialDoc }: { initialDoc: PortfolioDoc }) {
+export function PreviewFrame({ initialDoc, initialAssets }: { initialDoc: PortfolioDoc; initialAssets: AssetMap }) {
   const [doc, setDoc] = useState(initialDoc);
+  const [assets, setAssets] = useState(initialAssets);
 
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
@@ -28,6 +30,9 @@ export function PreviewFrame({ initialDoc }: { initialDoc: PortfolioDoc }) {
       // An in-progress edit can be momentarily invalid (an empty required
       // field). Keep showing the last good document rather than blanking.
       if (parsed.success) setDoc(parsed.data);
+
+      // Uploads made since the frame loaded: the editor sends its whole map.
+      if (e.data.assets && typeof e.data.assets === "object") setAssets(e.data.assets as AssetMap);
     };
 
     window.addEventListener("message", onMessage);
@@ -42,5 +47,5 @@ export function PreviewFrame({ initialDoc }: { initialDoc: PortfolioDoc }) {
   const hydrated = useSyncExternalStore(subscribe, () => true, () => false);
   const shown = hydrated ? resolveDynamic(doc) : doc;
 
-  return <Portfolio ctx={{ doc: shown, assets: {}, preview: true }} />;
+  return <Portfolio ctx={{ doc: shown, assets, preview: true }} />;
 }

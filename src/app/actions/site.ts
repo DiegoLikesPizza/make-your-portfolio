@@ -8,6 +8,7 @@ import { requireSiteOwner } from "@/lib/auth";
 import { revalidateSite } from "@/lib/sites";
 import { clearRelease, isReservedForSomeoneElse, releaseHandle } from "@/lib/handle-releases";
 import { newPreviewToken } from "@/lib/preview-links";
+import { removeSiteAssets } from "@/lib/storage";
 import { normalizeSubdomain, SUBDOMAIN_MESSAGES, validateSubdomain } from "@/lib/reserved-subdomains";
 
 /** Site-level settings: the things that are about the site, not its content. */
@@ -124,6 +125,8 @@ export async function deleteSite(siteId: string, _prev: SiteState, formData: For
 
   await db.site.delete({ where: { id: siteId } });
   await releaseHandle(owned.site.subdomain, owned.user.id);
+  // Uploads live on disk, outside the database cascade.
+  await removeSiteAssets(siteId);
   await revalidateSite(owned.site.subdomain, hostnames);
 
   redirect("/dashboard");

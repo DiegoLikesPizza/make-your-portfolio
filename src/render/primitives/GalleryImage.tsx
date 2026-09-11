@@ -3,9 +3,9 @@ import { asset, type RenderCtx } from "../context";
 /**
  * One gallery image, optionally linked.
  *
- * Uploads are step 7, so an item whose asset has no URL yet renders a neutral
- * block at the right aspect ratio — the layout stays honest instead of
- * collapsing to nothing.
+ * An item with no image behind it yet — just added, or its upload cleared —
+ * renders a neutral block at the right aspect ratio, so the layout stays honest
+ * instead of collapsing to nothing.
  */
 export function GalleryImage({
   item, ctx, className, aspect,

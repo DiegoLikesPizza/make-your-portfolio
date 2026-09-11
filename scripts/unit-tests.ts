@@ -15,6 +15,7 @@ import { isHandleCoolingDown } from "../src/lib/handles";
 import { afterScheduledCheck, FAILED_CHECKS_BEFORE_UNVERIFY, recheckToken } from "../src/lib/domain-recheck";
 import { isPreviewToken, newPreviewToken } from "../src/lib/preview-links";
 import { VERSIONS_KEPT, versionsToPrune } from "../src/lib/versions";
+import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditionWidths, resolveAsset } from "../src/lib/assets";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -529,4 +530,53 @@ expectVersions(
 const versionCases = 3;
 console.log(`\n${versionCases - versionFailures}/${versionCases} published version cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures ? 1 : 0);
+// ------------------------------------------------------- uploads
+let uploadFailures = 0;
+const expectUpload = (label: string, ok: boolean, detail = "") => {
+  if (!ok) uploadFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}upload ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+expectUpload("a wide image gets every width", renditionWidths(3000).join() === "400,800,1600", renditionWidths(3000).join());
+expectUpload("a mid-size image stops at its own width", renditionWidths(1000).join() === "400,800,1000", renditionWidths(1000).join());
+expectUpload("a small image is never upscaled", renditionWidths(300).join() === "300", renditionWidths(300).join());
+
+const still = resolveAsset({ id: "abc", siteId: "s1", width: 1600, height: 900, variants: { widths: [400, 800, 1600], animated: false, video: false } });
+expectUpload("a still resolves to its largest webp", still.src === "/assets/s1/abc-1600.webp", still.src);
+expectUpload("with a srcset of every width", still.srcSet === "/assets/s1/abc-400.webp 400w, /assets/s1/abc-800.webp 800w, /assets/s1/abc-1600.webp 1600w", still.srcSet);
+
+const gif = resolveAsset({ id: "g1", siteId: "s1", width: 800, height: 600, variants: { widths: [400, 800], animated: true, video: true } });
+expectUpload(
+  "an animated upload plays as webp, with its video and poster",
+  gif.src === "/assets/s1/g1-anim.webp" && gif.video === "/assets/s1/g1.mp4" && gif.poster === "/assets/s1/g1-800.webp",
+  JSON.stringify(gif),
+);
+const gifNoVideo = resolveAsset({ id: "g2", siteId: "s1", width: 800, height: 600, variants: { widths: [800], animated: true, video: false } });
+expectUpload("without ffmpeg there is no video to point at", gifNoVideo.video === undefined);
+
+const assetPathCases: [string[], boolean][] = [
+  [["s1", "abc-400.webp"], true],
+  [["s1", "abc-anim.webp"], true],
+  [["s1", "abc.mp4"], true],
+  [["..", "abc-400.webp"], false],
+  [["s1", "..%2Fsecret.webp"], false],
+  [["s1", "abc.svg"], false],
+  [["s1", "sub", "abc.webp"], false],
+  [["S1", "abc-400.webp"], false],
+];
+for (const [segments, expected] of assetPathCases) {
+  expectUpload(`path ${segments.join("/")}`, isSafeAssetPath(segments) === expected);
+}
+
+expectUpload("an upload that fits the quota is allowed", quotaProblem({ count: 3, bytes: 1024 }, 2048) === null);
+expectUpload("the 101st file is refused", quotaProblem({ count: ASSET_LIMITS.assetsPerSite, bytes: 0 }, 1) !== null);
+expectUpload("going past 200 MB is refused", quotaProblem({ count: 1, bytes: ASSET_LIMITS.bytesPerSite }, 1) !== null);
+
+const docUsingAsset = { profile: { avatarAssetId: "abc123" } };
+expectUpload("a document using the asset counts", documentsUseAsset([null, docUsingAsset], "abc123"));
+expectUpload("a longer id containing it doesn't", !documentsUseAsset([docUsingAsset], "abc"));
+
+const uploadCases = 7 + assetPathCases.length + 5;
+console.log(`\n${uploadCases - uploadFailures}/${uploadCases} upload cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures ? 1 : 0);

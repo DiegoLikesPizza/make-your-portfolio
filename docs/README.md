@@ -40,11 +40,11 @@ Any text may contain `{{date}}`, `{{years since=2019-01-01}}`,
 document and the clock and nothing else. See
 [editor.md](editor.md#dynamic-values).
 
-## What is not built
+## Uploads
 
-**Uploads.** `Asset` exists in the schema and `assetId` fields exist on gallery
-items, project covers and the About portrait, but nothing writes them. Gallery
-layouts render grey placeholders. Everything else works without images.
+Images and GIFs are uploaded from the editor, validated by decoding them, and
+written to disk as resized WebP (and MP4 for GIFs, where ffmpeg exists). See
+[uploads.md](uploads.md).
 
 ## Conventions worth knowing before you read code
 
