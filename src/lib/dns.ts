@@ -2,7 +2,8 @@ import { promises as dns } from "node:dns";
 import { APP_DOMAIN } from "@/lib/hosts";
 
 /**
- * Checking that a customer's domain actually points at us.
+ * Checking that a customer's domain actually points at us — and that it is
+ * actually theirs.
  *
  * Verification gates certificate issuance, so this has to be a real lookup
  * rather than a trust-the-user checkbox — and it has to check where the name
@@ -14,13 +15,30 @@ import { APP_DOMAIN } from "@/lib/hosts";
  * customer's hostname, so the domain goes green in the dashboard and serves an
  * error to the world. A check that can pass while the thing it checks is broken
  * is worse than no check.
+ *
+ * Resolving here is still not ownership. Every customer's domain points at the
+ * same address, so "this name reaches the platform" says nothing about *which*
+ * account may serve it: a domain whose owner removed it, or pointed it here
+ * before adding it, could be claimed by anyone. The TXT record carries the
+ * per-domain token, and only the person who controls the zone can publish it.
  */
 
 export type DnsCheck = { ok: true } | { ok: false; found: string[]; reason: string };
 
+export type DnsRecord = { type: "A" | "CNAME" | "TXT"; name: string; value: string };
+
+/** The label the ownership TXT record lives under, in front of the hostname. */
+const OWNERSHIP_LABEL = "_portfolio-verify";
+
 /** An apex domain (`diego.dev`) cannot use CNAME, so it needs an A record. */
 export function isApex(hostname: string): boolean {
   return hostname.split(".").length === 2;
+}
+
+/** A record name as a registrar's panel wants it: relative to the zone. */
+function relativeName(hostname: string, label?: string): string {
+  const host = isApex(hostname) ? "" : hostname.split(".")[0];
+  return [label, host].filter(Boolean).join(".") || "@";
 }
 
 /**
@@ -43,19 +61,47 @@ async function serverAddresses(serverIp?: string): Promise<string[]> {
  * to this server, and that is a property of someone else's DNS settings which
  * can change without warning.
  */
-export function requiredRecord(hostname: string, serverIp: string | undefined) {
-  const name = isApex(hostname) ? "@" : hostname.split(".")[0];
+export function requiredRecord(hostname: string, serverIp: string | undefined): DnsRecord {
+  const name = relativeName(hostname);
 
-  if (serverIp) return { type: "A" as const, name, value: serverIp };
-  if (isApex(hostname)) return { type: "A" as const, name, value: "your server's IP address" };
-  return { type: "CNAME" as const, name, value: APP_DOMAIN };
+  if (serverIp) return { type: "A", name, value: serverIp };
+  if (isApex(hostname)) return { type: "A", name, value: "your server's IP address" };
+  return { type: "CNAME", name, value: APP_DOMAIN };
 }
 
-export async function checkDomain(hostname: string, serverIp?: string): Promise<DnsCheck> {
+/** The TXT record that proves the person adding `hostname` controls its zone. */
+export function ownershipRecord(hostname: string, token: string): DnsRecord {
+  return { type: "TXT", name: relativeName(hostname, OWNERSHIP_LABEL), value: `portfolio-verify=${token}` };
+}
+
+/**
+ * Does any TXT answer carry the token?
+ *
+ * Resolvers hand each TXT record back as an array of chunks — a value longer
+ * than 255 bytes is split — so the chunks are one value and must be joined
+ * before comparing.
+ */
+export function hasOwnershipToken(records: string[][], token: string): boolean {
+  const expected = `portfolio-verify=${token}`;
+  return records.some((chunks) => chunks.join("") === expected);
+}
+
+export async function checkDomain(hostname: string, token: string, serverIp?: string): Promise<DnsCheck> {
   try {
     const ours = await serverAddresses(serverIp);
     if (ours.length === 0) {
       return { ok: false, found: [], reason: "This server doesn't know its own address — set SERVER_IP." };
+    }
+
+    // Ownership first: pointing at us is necessary, but it is the TXT token
+    // that says this account is the one allowed to serve the name.
+    const txt = await dns.resolveTxt(`${OWNERSHIP_LABEL}.${hostname}`).catch(() => [] as string[][]);
+    if (!hasOwnershipToken(txt, token)) {
+      return {
+        ok: false,
+        found: txt.map((chunks) => chunks.join("")),
+        reason: "The TXT record that proves you own this domain is missing or doesn't match.",
+      };
     }
 
     // Resolvers follow CNAMEs, so this one lookup covers both record shapes and

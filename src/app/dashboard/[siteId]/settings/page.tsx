@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireSiteOwner } from "@/lib/auth";
 import { APP_DOMAIN } from "@/lib/hosts";
-import { requiredRecord } from "@/lib/dns";
+import { ownershipRecord, requiredRecord } from "@/lib/dns";
 import { Card, DashboardShell } from "@/components/dashboard/Shell";
 import { DomainManager } from "./DomainManager";
 import { DeleteSiteForm, HandleForm, PublishState } from "./SiteForms";
@@ -52,7 +52,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
             hostname: d.hostname,
             verified: d.verified,
             lastCheckedAt: d.lastCheckedAt?.toISOString() ?? null,
-            record: requiredRecord(d.hostname, serverIp),
+            records: [ownershipRecord(d.hostname, d.verifyToken), requiredRecord(d.hostname, serverIp)],
           }))}
         />
       </Card>
