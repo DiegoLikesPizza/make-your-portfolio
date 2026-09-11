@@ -12,6 +12,18 @@ updates:
       # because that is the one that needs reading.
       minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      # eslint-config-next can't run on these majors yet: typescript-eslint
+      # refuses TypeScript 7 (#59) and eslint-plugin-react crashes on ESLint 10
+      # (#61). Remove both once eslint-config-next supports them.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+      # Types follow the Node the box runs (22), not the newest Node (#60).
+      # Raise this together with the Node version in the deploy.
+      - dependency-name: "@types/node"
+        versions: [">=23"]
 
   - package-ecosystem: github-actions
     directory: /
