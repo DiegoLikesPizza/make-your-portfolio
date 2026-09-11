@@ -11,6 +11,10 @@ type DomainRow = {
   hostname: string;
   verified: boolean;
   lastCheckedAt: string | null;
+  /** Set once the domain has worked; with `verified` false, it stopped. */
+  verifiedAt: string | null;
+  /** Consecutive failed daily re-checks. */
+  failedChecks: number;
   records: DnsRecord[];
 };
 
@@ -89,6 +93,19 @@ export function DomainManager({
                 {d.verified ? "Verified" : "Pending DNS"}
               </span>
             </div>
+
+            {!d.verified && d.verifiedAt && (
+              <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+                This domain stopped pointing here, so the site was taken offline on it. Fix the records
+                below, then re-check.
+              </p>
+            )}
+            {d.verified && d.failedChecks > 0 && (
+              <p className="mt-3 text-sm text-amber-800 dark:text-amber-300">
+                The last daily check couldn&apos;t reach this server through {d.hostname}. If tomorrow&apos;s
+                check fails too, the site goes offline on it.
+              </p>
+            )}
 
             {!d.verified && (
               <div className="mt-4 space-y-2">

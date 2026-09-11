@@ -141,6 +141,11 @@ model Domain {
   hostname String @unique
 
   verified      Boolean   @default(false)
+  /// When it last verified. Lets the dashboard tell "stopped pointing here"
+  /// apart from "never set up".
+  verifiedAt    DateTime?
+  /// Consecutive failed daily re-checks (src/lib/domain-recheck.ts).
+  failedChecks  Int       @default(0)
   /// Must appear as `portfolio-verify=<token>` in a TXT record at
   /// `_portfolio-verify.<hostname>` — the proof that the zone is the user's.
   verifyToken   String

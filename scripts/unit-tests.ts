@@ -12,6 +12,7 @@ import { starterDoc } from "../src/lib/fixtures/starter";
 import { contentSecurityPolicy } from "../src/lib/csp";
 import { portfolioMetadata } from "../src/lib/portfolio-metadata";
 import { isHandleCoolingDown } from "../src/lib/handles";
+import { afterScheduledCheck, FAILED_CHECKS_BEFORE_UNVERIFY, recheckToken } from "../src/lib/domain-recheck";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -454,4 +455,36 @@ expectHandle("anyone can claim it after 30 days", !isHandleCoolingDown({ userId:
 const handleCases = 4;
 console.log(`\n${handleCases - handleFailures}/${handleCases} released handle cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures ? 1 : 0);
+// ------------------------------------------------------- daily domain re-check
+//
+// One bad DNS lookup must not take a working site offline; consecutive failures
+// should.
+let recheckFailures = 0;
+const expectRecheck = (label: string, ok: boolean, detail = "") => {
+  if (!ok) recheckFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}recheck ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const verifiedLastWeek = { failedChecks: 0, verifiedAt: daysAgo(7) };
+const passed = afterScheduledCheck({ failedChecks: 1, verifiedAt: daysAgo(7) }, true, NOW);
+expectRecheck("a pass resets the failure count", passed.verified && passed.failedChecks === 0, JSON.stringify(passed));
+expectRecheck(
+  "a pass gives domains verified before verifiedAt existed a date",
+  afterScheduledCheck({ failedChecks: 0, verifiedAt: null }, true, NOW).verifiedAt?.getTime() === NOW.getTime(),
+);
+const firstFailure = afterScheduledCheck(verifiedLastWeek, false, NOW);
+expectRecheck("one failure keeps the domain up", firstFailure.verified && firstFailure.failedChecks === 1, JSON.stringify(firstFailure));
+const secondFailure = afterScheduledCheck(firstFailure, false, NOW);
+expectRecheck(
+  `${FAILED_CHECKS_BEFORE_UNVERIFY} failures in a row take it offline`,
+  !secondFailure.verified && secondFailure.failedChecks === FAILED_CHECKS_BEFORE_UNVERIFY,
+  JSON.stringify(secondFailure),
+);
+expectRecheck("going offline keeps when it last worked", secondFailure.verifiedAt === verifiedLastWeek.verifiedAt);
+expectRecheck("the token is stable for a secret", recheckToken("s3cret") === recheckToken("s3cret"));
+expectRecheck("and differs between secrets", recheckToken("s3cret") !== recheckToken("other"));
+
+const recheckCases = 7;
+console.log(`\n${recheckCases - recheckFailures}/${recheckCases} domain re-check cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures ? 1 : 0);

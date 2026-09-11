@@ -52,6 +52,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
             hostname: d.hostname,
             verified: d.verified,
             lastCheckedAt: d.lastCheckedAt?.toISOString() ?? null,
+            verifiedAt: d.verifiedAt?.toISOString() ?? null,
+            failedChecks: d.failedChecks,
             records: [ownershipRecord(d.hostname, d.verifyToken), requiredRecord(d.hostname, serverIp)],
           }))}
         />

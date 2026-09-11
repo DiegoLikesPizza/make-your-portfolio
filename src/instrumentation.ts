@@ -1,9 +1,9 @@
 /**
- * Startup checks. `register` runs once when the server starts, before it
- * accepts a request — and never during `next build`, so a build machine
- * doesn't need production secrets.
+ * Startup. `register` runs once when the server starts, before it accepts a
+ * request — and never during `next build`, so a build machine doesn't need
+ * production secrets.
  */
-export function register() {
+export async function register() {
   // Auth.js builds sign-in links from AUTH_URL when it is set, and otherwise
   // from the request's Host / X-Forwarded-Host (`trustHost: true`). Those are
   // client-controlled: anyone could request a link for someone else's address
@@ -14,5 +14,12 @@ export function register() {
     throw new Error(
       "AUTH_URL must be set in production. Without it, sign-in links are built from the request's Host header.",
     );
+  }
+
+  // Background work belongs to the long-running Node server only: not the edge
+  // runtime, and not the dev server, which restarts on every change.
+  if (process.env.NEXT_RUNTIME === "nodejs" && process.env.NODE_ENV === "production") {
+    const { scheduleDomainRecheck } = await import("@/lib/domain-recheck");
+    scheduleDomainRecheck();
   }
 }
