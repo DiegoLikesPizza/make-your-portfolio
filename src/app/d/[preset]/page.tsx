@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
-import { plain } from "@/lib/text";
 import { DEMO_HANDLES, demoDoc } from "@/lib/fixtures/demo";
 import { resolveDynamic } from "@/lib/dynamic";
+import { portfolioMetadata } from "@/lib/portfolio-metadata";
 
 /**
  * The public demo portfolios, one per preset.
@@ -27,16 +27,9 @@ function docFor(preset: string) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { preset } = await params;
   const doc = docFor(preset);
-  if (!doc) return {};
-
-  const { meta, profile } = doc;
-  return {
-    title: meta.title || `${profile.name} — Portfolio`,
-    description: meta.description || plain(profile.headline),
-    // The fixture sets `noindex`: six pages of near-identical copy are thin
-    // duplicate content, and /layouts is the surface meant to be indexed.
-    robots: meta.noindex ? { index: false, follow: false } : undefined,
-  };
+  // The fixture sets `noindex`: six pages of near-identical copy are thin
+  // duplicate content, and /layouts is the surface meant to be indexed.
+  return doc ? portfolioMetadata(doc) : {};
 }
 
 export default async function DemoPage({ params }: Props) {

@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
-import { plain } from "@/lib/text";
 import { getPublishedSite } from "@/lib/sites";
 import { resolveDynamic } from "@/lib/dynamic";
+import { portfolioMetadata } from "@/lib/portfolio-metadata";
 
 /**
  * Every published portfolio, whatever host it was reached by.
@@ -17,20 +17,7 @@ type Props = { params: Promise<{ host: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { host } = await params;
   const site = await getPublishedSite(decodeURIComponent(host));
-  if (!site) return {};
-
-  const { meta, profile } = resolveDynamic(site.doc);
-  return {
-    title: meta.title || `${profile.name} — Portfolio`,
-    description: meta.description || plain(profile.headline),
-    robots: meta.noindex ? { index: false, follow: false } : undefined,
-    openGraph: {
-      type: "website",
-      title: meta.title,
-      description: meta.description,
-      siteName: profile.name,
-    },
-  };
+  return site ? portfolioMetadata(resolveDynamic(site.doc)) : {};
 }
 
 export default async function SitePage({ params }: Props) {
