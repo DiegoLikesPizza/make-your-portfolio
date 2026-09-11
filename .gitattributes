@@ -1,2 +1,4 @@
-# Shell scripts run on Linux; a CRLF ending makes bash read "" as part of each command.
+# Shell scripts run on Linux, where a CRLF line ending makes bash treat the
+# carriage return as part of every command. Pin them to LF whatever the
+# committer's platform does.
 *.sh text eol=lf
