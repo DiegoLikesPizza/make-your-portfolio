@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { tokens } from "./tokens";
 import { backgroundConfig } from "./background";
-import { link, section } from "./sections";
+import { isSafeHref, link, safeHref, section } from "./sections";
 
 /**
  * The one definition of what a portfolio is.
@@ -49,7 +49,7 @@ export const cta = z.object({
   id: z.string().min(1),
   label: z.string().max(60),
   /** A section slug, an external URL, or a mailto:. */
-  target: z.string().max(2000),
+  target: safeHref,
   style: z.enum(["solid", "outline", "text"]),
 });
 
@@ -114,6 +114,22 @@ export type NavConfig = z.infer<typeof navConfig>;
 export type NavMobileBehavior = z.infer<typeof navMobileBehavior>;
 export type Cta = z.infer<typeof cta>;
 
+/** Every key in a document whose value ends up in an `href`. */
+const LINK_KEYS = new Set(["href", "orgHref", "target"]);
+
+/**
+ * Blank any stored link the scheme check now refuses.
+ *
+ * The check arrived after documents were already stored. Refusing one of those
+ * outright would make `migrate` throw — taking a published page down over a
+ * single link — so the link is emptied and the rest of the document survives.
+ */
+function dropUnsafeLinks(raw: unknown): unknown {
+  return JSON.parse(JSON.stringify(raw), (key, value) =>
+    LINK_KEYS.has(key) && typeof value === "string" && !isSafeHref(value) ? "" : value,
+  );
+}
+
 /**
  * Upgrade a stored document to the current version.
  *
@@ -127,7 +143,7 @@ export function migrate(raw: unknown): PortfolioDoc {
     throw new Error("Not a portfolio document: missing version");
   }
   // v1 is current; future versions add `if (doc.version === 1) { ...; doc.version = 2 }`
-  return portfolioDoc.parse(raw);
+  return portfolioDoc.parse(dropUnsafeLinks(raw));
 }
 
 /** Parse without throwing, for surfaces that must degrade rather than 500. */

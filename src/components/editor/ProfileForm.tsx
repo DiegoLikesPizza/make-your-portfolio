@@ -2,7 +2,7 @@
 
 import { nanoid } from "nanoid";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
-import { Select, TextArea, TextInput } from "./fields";
+import { Select, TextArea, TextInput, UrlInput } from "./fields";
 import { ListEditor } from "./ListEditor";
 import { RichTextArea } from "./RichText";
 import { ICON_OPTIONS } from "./options";
@@ -57,7 +57,7 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
         render={(c, update) => (
           <>
             <TextInput label="Label" value={c.label} onChange={(label) => update({ label })} />
-            <TextInput
+            <UrlInput
               label="Target"
               value={c.target}
               hint="A section slug, a URL, or mailto:you@example.com"
@@ -77,7 +77,7 @@ export function ProfileForm({ doc, onChange }: { doc: PortfolioDoc; onChange: (n
         render={(l, update) => (
           <>
             <TextInput label="Label" value={l.label} onChange={(label) => update({ label })} />
-            <TextInput label="URL" value={l.href} onChange={(href) => update({ href })} />
+            <UrlInput label="URL" value={l.href} onChange={(href) => update({ href })} />
             <Select label="Icon" value={l.icon as string} options={ICON_OPTIONS} onChange={(v) => update({ icon: v as typeof l.icon })} />
           </>
         )}

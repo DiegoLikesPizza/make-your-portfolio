@@ -2,7 +2,7 @@ import { z } from "zod";
 import { nanoid } from "nanoid";
 import type { PortfolioDoc } from "@/lib/schema/portfolio";
 import type { Section } from "@/lib/schema/sections";
-import { iconName } from "@/lib/schema/sections";
+import { iconName, isSafeHref } from "@/lib/schema/sections";
 import { defaultVariant } from "@/variants/registry";
 
 /**
@@ -117,6 +117,12 @@ export type Brief = z.infer<typeof brief>;
 /** `null` is how the model says "nothing here"; the document says it with absence. */
 const some = (value: string | null | undefined) => (value?.trim() ? value : undefined);
 
+/**
+ * A link from the model, or nothing if the schema would refuse its scheme.
+ * One bad link is dropped rather than failing the whole generation.
+ */
+const safeLink = (value: string | null) => (value?.trim() && isSafeHref(value) ? value : undefined);
+
 /** `Senior Engineer` -> `senior-engineer`, made unique against what's taken. */
 function slugFor(title: string, taken: Set<string>) {
   const base =
@@ -162,7 +168,7 @@ export function applyBrief(doc: PortfolioDoc, value: Brief): PortfolioDoc {
               tech: p.tech,
               year: some(p.year),
               status: p.status,
-              href: some(p.href),
+              href: safeLink(p.href),
               featured: false,
             })),
           },

@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { isSafeHref, UNSAFE_HREF_MESSAGE } from "@/lib/schema/sections";
 
 /**
  * Editor form primitives.
@@ -11,12 +12,24 @@ import type { ReactNode } from "react";
  * source of truth to keep in sync.
  */
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Field({
+  label, hint, error, children,
+}: {
+  label: string;
+  hint?: string;
+  /** Shown in place of the hint while it applies. */
+  error?: string;
+  children: ReactNode;
+}) {
   return (
     <label className="block">
       <span className="block text-xs font-medium uppercase tracking-[0.08em] text-neutral-500 dark:text-neutral-400">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-xs text-neutral-400 dark:text-neutral-500">{hint}</span>}
+      {error ? (
+        <span className="mt-1 block text-xs text-red-600 dark:text-red-400">{error}</span>
+      ) : (
+        hint && <span className="mt-1 block text-xs text-neutral-400 dark:text-neutral-500">{hint}</span>
+      )}
     </label>
   );
 }
@@ -32,18 +45,39 @@ export const inputClass = [
   "dark:placeholder:text-neutral-500",
 ].join(" ");
 
-export function TextInput({
-  label, value, onChange, placeholder, hint,
-}: {
+type TextInputProps = {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   hint?: string;
-}) {
+};
+
+export function TextInput({ label, value, onChange, placeholder, hint }: TextInputProps) {
   return (
     <Field label={label} hint={hint}>
       <input className={inputClass} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+    </Field>
+  );
+}
+
+/**
+ * A field whose value becomes an `href`.
+ *
+ * The schema refuses a scheme outside its allowlist, and the draft endpoint
+ * refuses the whole document with it — so the reason is shown here, on the
+ * field, rather than as an autosave that fails with nothing to say why.
+ */
+export function UrlInput({ label, value, onChange, placeholder, hint }: TextInputProps) {
+  return (
+    <Field label={label} hint={hint} error={isSafeHref(value) ? undefined : UNSAFE_HREF_MESSAGE}>
+      <input
+        className={inputClass}
+        inputMode="url"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </Field>
   );
 }
