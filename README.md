@@ -177,10 +177,12 @@ there.) Every change to a domain drops that hostname's cache tag — without it 
 before verification never expired and the domain stayed dead after going green. See
 [docs/hosting.md](docs/hosting.md).
 
-**Not finished on the deployed box:** issuing the certificate. `/api/caddy/authorize` exists and is
-correct, but nginx has no equivalent of Caddy's on-demand TLS — it cannot obtain a certificate for
-a hostname it has never seen. The remaining work is a hook that runs `certbot --nginx -d <domain>`
-when a domain is verified. Until then a customer domain resolves and verifies but has no HTTPS.
+**Certificates under nginx.** nginx has no equivalent of Caddy's on-demand TLS, so the app issues
+a domain's certificate itself the moment it verifies: it runs [`deploy/issue-cert.sh`](deploy/issue-cert.sh)
+— the path in `CERT_ISSUE_COMMAND` — which gets the certificate with `certbot certonly --webroot`,
+writes the domain its own nginx block, tests the config and reloads. With `CERT_ISSUE_COMMAND` unset
+the step is skipped and a verified domain resolves without HTTPS. The details are in
+[docs/hosting.md](docs/hosting.md#two-front-ends-two-ways-to-get-a-certificate).
 `/api/caddy/*` answers 404 at the proxy — in both Caddyfile site blocks, both blocks of
 `deploy/nginx-customer-domains.conf`, and every block `deploy/issue-cert.sh` writes — so it cannot
 be reached from outside. The app can't enforce that itself: behind a reverse proxy, every request
