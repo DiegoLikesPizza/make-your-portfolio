@@ -13,8 +13,11 @@ import { authConfig } from "@/auth.config";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(db),
-  // The app is reached through Caddy, by LAN IP, and on several hostnames, so
-  // the Host header is what decides callback URLs rather than a fixed origin.
+  // For the dev server, which is reached by LAN IP and on several hostnames. In
+  // production AUTH_URL takes precedence over the Host header for every URL
+  // Auth.js builds, sign-in links included — and src/instrumentation.ts refuses
+  // to serve anything without it, because a Host header is whatever the client
+  // sends.
   trustHost: true,
   session: { strategy: "database" },
   pages: {
