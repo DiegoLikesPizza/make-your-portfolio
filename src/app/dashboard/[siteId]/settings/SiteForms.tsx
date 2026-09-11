@@ -2,6 +2,7 @@
 
 import { useActionState, useTransition, useState } from "react";
 import { deleteSite, renameHandle, unpublishSite, type SiteState } from "@/app/actions/site";
+import { ConfirmButton } from "@/components/dashboard/ConfirmButton";
 import { formatDateTime } from "@/lib/dates";
 
 const inputClass =
@@ -66,14 +67,15 @@ export function PublishState({ siteId, publishedAt }: { siteId: string; publishe
   return (
     <div className="mt-3 flex flex-wrap items-center gap-3">
       <span className="text-sm">Live since {formatDateTime(publishedAt)}.</span>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => start(async () => setState(await unpublishSite(siteId)))}
+      <ConfirmButton
+        label="Take offline"
+        question="Take the site offline?"
+        confirmLabel="Take offline"
+        pending={pending}
+        pendingLabel="Taking offline…"
+        onConfirm={() => start(async () => setState(await unpublishSite(siteId)))}
         className="rounded-lg border border-neutral-300 px-4 py-2 text-sm disabled:opacity-40 dark:border-neutral-700"
-      >
-        {pending ? "Taking offline…" : "Take offline"}
-      </button>
+      />
       <Result state={state} />
     </div>
   );
