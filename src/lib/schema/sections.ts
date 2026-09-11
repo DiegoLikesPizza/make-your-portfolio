@@ -15,6 +15,32 @@ const id = z.string().min(1);
 const richText = z.string().max(5000);
 const shortText = z.string().max(300);
 
+/** Schemes a link may use. A value with no scheme is relative — a path or a section slug. */
+const LINK_SCHEMES = new Set(["http", "https", "mailto", "tel"]);
+
+export const UNSAFE_HREF_MESSAGE = "Only http(s), mailto: and tel: links are allowed.";
+
+/**
+ * Can this string be put in an `href`?
+ *
+ * An allowlist of schemes rather than a denylist of bad ones: `javascript:`,
+ * `data:` and `vbscript:` are the famous ones, not the complete list. Browsers
+ * ignore tabs, newlines and leading spaces or control characters when reading a
+ * scheme (`java\tscript:` runs as `javascript:`), so those are removed before
+ * looking — for the check only; the stored value is left as typed.
+ *
+ * React 19 also refuses `javascript:` URLs when rendering. That is a second
+ * line, not the first: portfolios share an origin with the dashboard, so one
+ * renderer path that skips React would otherwise be stored XSS.
+ */
+export function isSafeHref(value: string): boolean {
+  const compact = Array.from(value).filter((char) => char.charCodeAt(0) > 0x20).join("");
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact)?.[1];
+  return !scheme || LINK_SCHEMES.has(scheme.toLowerCase());
+}
+
+export const safeHref = z.string().max(2000).refine(isSafeHref, { error: UNSAFE_HREF_MESSAGE });
+
 /** Icons come from a fixed lucide allowlist — never an arbitrary name. */
 export const iconName = z.enum([
   "app-window", "wrench", "gauge", "code", "database", "cloud", "cpu",
@@ -25,7 +51,7 @@ export const iconName = z.enum([
 export const link = z.object({
   id,
   label: shortText,
-  href: z.string().max(2000),
+  href: safeHref,
   icon: iconName.or(z.enum(["github", "linkedin", "mail", "x", "globe", "instagram", "dribbble"])).optional(),
 });
 
@@ -52,7 +78,7 @@ const project = z.object({
   tech: z.array(z.string().max(40)).max(12),
   year: z.string().max(20).optional(),
   status: z.enum(["live", "archived", "wip", "none"]),
-  href: z.string().max(2000).optional(),
+  href: safeHref.optional(),
   linkLabel: shortText.optional(),
   coverAssetId: z.string().optional(),
   featured: z.boolean(),
@@ -66,7 +92,7 @@ const experienceData = z.object({
       id,
       role: shortText,
       org: shortText,
-      orgHref: z.string().max(2000).optional(),
+      orgHref: safeHref.optional(),
       start: shortText,
       end: shortText.optional(),
       summary: richText.optional(),
@@ -103,7 +129,7 @@ const skillsData = z.object({
 
 const galleryData = z.object({
   items: z.array(
-    z.object({ id, assetId: z.string(), caption: shortText.optional(), href: z.string().max(2000).optional() }),
+    z.object({ id, assetId: z.string(), caption: shortText.optional(), href: safeHref.optional() }),
   ).max(60),
 });
 

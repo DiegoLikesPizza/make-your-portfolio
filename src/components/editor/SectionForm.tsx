@@ -2,7 +2,7 @@
 
 import { nanoid } from "nanoid";
 import type { Section } from "@/lib/schema/sections";
-import { Select, TextArea, TextInput } from "./fields";
+import { Select, TextArea, TextInput, UrlInput } from "./fields";
 import { ListEditor } from "./ListEditor";
 import { CommaListInput, keepIds, LineListInput } from "./TokenField";
 import { RichTextArea } from "./RichText";
@@ -101,7 +101,7 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
               <CommaListInput label="Tech" value={p.tech} onChange={(tech) => update({ tech })} />
               <TextInput label="Year" value={p.year ?? ""} onChange={(year) => update({ year })} />
               <Select label="Status" value={p.status} options={STATUS_OPTIONS} onChange={(status) => update({ status })} />
-              <TextInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
+              <UrlInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
               <TextInput label="Link label" value={p.linkLabel ?? ""} onChange={(linkLabel) => update({ linkLabel })} />
             </>
           )}
@@ -130,7 +130,7 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
             render={(c, update) => (
               <>
                 <TextInput label="Label" value={c.label} onChange={(label) => update({ label })} />
-                <TextInput label="Link" value={c.href} onChange={(href) => update({ href })} />
+                <UrlInput label="Link" value={c.href} onChange={(href) => update({ href })} />
                 <Select label="Icon" value={c.icon as string} options={ICON_OPTIONS} onChange={(v) => update({ icon: v as typeof c.icon })} />
               </>
             )}
@@ -186,7 +186,7 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
             <>
               <TextInput label="Role" value={j.role} onChange={(role) => update({ role })} />
               <TextInput label="Organisation" value={j.org} onChange={(org) => update({ org })} />
-              <TextInput label="Organisation link" value={j.orgHref ?? ""} onChange={(orgHref) => update({ orgHref })} />
+              <UrlInput label="Organisation link" value={j.orgHref ?? ""} onChange={(orgHref) => update({ orgHref })} />
               <TextInput label="Start" value={j.start} onChange={(start) => update({ start })} />
               <TextInput label="End" value={j.end ?? ""} hint="Leave blank for Present." onChange={(end) => update({ end })} />
               <TextArea label="Summary" rows={3} value={j.summary ?? ""} onChange={(summary) => update({ summary })} />
@@ -279,7 +279,7 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
           render={(g, update) => (
             <>
               <TextInput label="Caption" value={g.caption ?? ""} onChange={(caption) => update({ caption })} />
-              <TextInput label="Link" value={g.href ?? ""} onChange={(href) => update({ href })} />
+              <UrlInput label="Link" value={g.href ?? ""} onChange={(href) => update({ href })} />
             </>
           )}
         />

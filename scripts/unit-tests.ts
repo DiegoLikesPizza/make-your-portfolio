@@ -6,6 +6,9 @@ import { hasOwnershipToken, ownershipRecord } from "../src/lib/dns";
 import { isStaleClaim } from "../src/lib/domain-claims";
 import { clientIp, describeWait, rateLimit } from "../src/lib/rate-limit";
 import { normalizeSource } from "../src/lib/analytics";
+import { isSafeHref } from "../src/lib/schema/sections";
+import { migrate, portfolioDoc } from "../src/lib/schema/portfolio";
+import { starterDoc } from "../src/lib/fixtures/starter";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -314,4 +317,53 @@ for (const [input, expected] of sourceCases) {
 const limitCases = 6 + ipCases.length + 2 + sourceCases.length;
 console.log(`\n${limitCases - limitFailures}/${limitCases} rate limit cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures ? 1 : 0);
+// ------------------------------------------------------- link schemes
+//
+// Portfolios share an origin with the dashboard, so a link that runs script is
+// stored XSS against anyone signed in who views one.
+const hrefCases: [string, boolean][] = [
+  ["https://example.com", true],
+  ["http://example.com", true],
+  ["mailto:you@example.com", true],
+  ["tel:+441234567890", true],
+  ["//example.com", true],
+  ["#about", true],
+  // A CTA target may be a bare section slug.
+  ["about", true],
+  ["", true],
+  ["javascript:alert(1)", false],
+  ["JavaScript:alert(1)", false],
+  // Browsers drop tabs, newlines and leading spaces before reading a scheme.
+  ["java\tscript:alert(1)", false],
+  ["java\nscript:alert(1)", false],
+  ["  javascript:alert(1)", false],
+  ["data:text/html,<script>alert(1)</script>", false],
+  ["vbscript:msgbox(1)", false],
+];
+
+let hrefFailures = 0;
+const expectHref = (label: string, ok: boolean, detail = "") => {
+  if (!ok) hrefFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}href ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+for (const [href, expected] of hrefCases) {
+  const actual = isSafeHref(href);
+  expectHref(JSON.stringify(href).slice(0, 40), actual === expected, `(got ${actual}, expected ${expected})`);
+}
+
+const withLink = (href: string) => {
+  const doc = starterDoc("Test");
+  doc.profile.links = [{ id: "l1", label: "Site", href, icon: "globe" }];
+  return doc;
+};
+expectHref("the schema refuses a document with an unsafe link", !portfolioDoc.safeParse(withLink("javascript:alert(1)")).success);
+// Stored before the check existed: the link goes, the document still loads.
+const repaired = migrate(withLink("javascript:alert(1)"));
+expectHref("migrate empties an unsafe stored link", repaired.profile.links[0].href === "", `(got ${repaired.profile.links[0].href})`);
+expectHref("migrate leaves a safe link alone", migrate(withLink("https://example.com")).profile.links[0].href === "https://example.com");
+
+const hrefTotal = hrefCases.length + 3;
+console.log(`\n${hrefTotal - hrefFailures}/${hrefTotal} link scheme cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures ? 1 : 0);
