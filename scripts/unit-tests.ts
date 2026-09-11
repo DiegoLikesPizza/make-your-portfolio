@@ -13,6 +13,7 @@ import { contentSecurityPolicy } from "../src/lib/csp";
 import { portfolioMetadata } from "../src/lib/portfolio-metadata";
 import { isHandleCoolingDown } from "../src/lib/handles";
 import { afterScheduledCheck, FAILED_CHECKS_BEFORE_UNVERIFY, recheckToken } from "../src/lib/domain-recheck";
+import { isPreviewToken, newPreviewToken } from "../src/lib/preview-links";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -487,4 +488,24 @@ expectRecheck("and differs between secrets", recheckToken("s3cret") !== recheckT
 const recheckCases = 7;
 console.log(`\n${recheckCases - recheckFailures}/${recheckCases} domain re-check cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures ? 1 : 0);
+// ------------------------------------------------------- draft preview links
+//
+// The token is the only thing standing between a stranger and the draft.
+let previewFailures = 0;
+const expectPreview = (label: string, ok: boolean, detail = "") => {
+  if (!ok) previewFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}preview ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const tokenA = newPreviewToken();
+const tokenB = newPreviewToken();
+expectPreview("a new token has the expected shape", isPreviewToken(tokenA), tokenA);
+expectPreview("tokens are not repeated", tokenA !== tokenB);
+expectPreview("a short value is not a token", !isPreviewToken("abc"));
+expectPreview("a path is not a token", !isPreviewToken("../../etc/passwd"));
+expectPreview("a token with a stray character is not a token", !isPreviewToken(`${tokenA.slice(0, 42)}!`));
+
+const previewCases = 5;
+console.log(`\n${previewCases - previewFailures}/${previewCases} preview link cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures ? 1 : 0);

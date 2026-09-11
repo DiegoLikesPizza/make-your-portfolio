@@ -86,6 +86,10 @@ model Site {
   publishedDoc Json?
   publishedAt  DateTime?
 
+  /// The secret in the draft preview link, /p/<token>. Null when there is none;
+  /// replacing it kills the old link (src/lib/preview-links.ts).
+  previewToken String? @unique
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

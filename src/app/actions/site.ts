@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { requireSiteOwner } from "@/lib/auth";
 import { revalidateSite } from "@/lib/sites";
 import { clearRelease, isReservedForSomeoneElse, releaseHandle } from "@/lib/handle-releases";
+import { newPreviewToken } from "@/lib/preview-links";
 import { normalizeSubdomain, SUBDOMAIN_MESSAGES, validateSubdomain } from "@/lib/reserved-subdomains";
 
 /** Site-level settings: the things that are about the site, not its content. */
@@ -80,6 +81,31 @@ export async function unpublishSite(siteId: string): Promise<SiteState> {
 
   revalidatePath(`/dashboard/${siteId}/settings`);
   return { ok: "Taken offline. Your draft is untouched — press Publish to put it back." };
+}
+
+/**
+ * Create the private draft preview link, or replace it: the old link stops
+ * working the moment a new token exists.
+ */
+export async function createPreviewLink(siteId: string): Promise<SiteState> {
+  const owned = await requireSiteOwner(siteId);
+  if (!owned) return { error: "Not found." };
+
+  await db.site.update({ where: { id: siteId }, data: { previewToken: newPreviewToken() } });
+
+  revalidatePath(`/dashboard/${siteId}/settings`);
+  return { ok: owned.site.previewToken ? "New link created. The old one no longer works." : "Preview link created." };
+}
+
+/** Turn the draft preview link off. */
+export async function revokePreviewLink(siteId: string): Promise<SiteState> {
+  const owned = await requireSiteOwner(siteId);
+  if (!owned) return { error: "Not found." };
+
+  await db.site.update({ where: { id: siteId }, data: { previewToken: null } });
+
+  revalidatePath(`/dashboard/${siteId}/settings`);
+  return { ok: "Preview link turned off." };
 }
 
 /** Delete the site and everything under it. Domains, assets and views cascade. */

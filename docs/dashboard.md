@@ -78,6 +78,11 @@ the custom hostname were each edited somewhere different.
 - **Published** — when it went live, and *Take offline*, which clears
   `publishedDoc` and leaves the draft alone. (A `published` boolean would leave
   a stale document in the row for a later bug to serve.)
+- **Preview link** — a private `/p/<token>` link that shows the **draft** to
+  whoever has it, for asking someone's opinion before publishing. The token is
+  32 random bytes and is the only access control, so the page is never indexed
+  and never counted in analytics. *New link* replaces it (the old one stops
+  working) and *Revoke* turns it off.
 - **Your own domain** — see [hosting.md](hosting.md).
 - **Delete site** — cascades to domains, assets and views; the account stays.
   Gated on typing the handle.

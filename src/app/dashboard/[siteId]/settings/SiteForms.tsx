@@ -1,7 +1,9 @@
 "use client";
 
-import { useActionState, useTransition, useState } from "react";
-import { deleteSite, renameHandle, unpublishSite, type SiteState } from "@/app/actions/site";
+import { useActionState, useTransition, useState, useSyncExternalStore } from "react";
+import {
+  createPreviewLink, deleteSite, renameHandle, revokePreviewLink, unpublishSite, type SiteState,
+} from "@/app/actions/site";
 import { ConfirmButton } from "@/components/dashboard/ConfirmButton";
 import { formatDateTime } from "@/lib/dates";
 
@@ -77,6 +79,85 @@ export function PublishState({ siteId, publishedAt }: { siteId: string; publishe
         className="rounded-lg border border-neutral-300 px-4 py-2 text-sm disabled:opacity-40 dark:border-neutral-700"
       />
       <Result state={state} />
+    </div>
+  );
+}
+
+const secondaryButton =
+  "rounded-lg border border-neutral-300 px-4 py-2 text-sm disabled:opacity-40 dark:border-neutral-700";
+
+const subscribeNothing = () => () => {};
+
+/**
+ * The private draft preview link.
+ *
+ * The server renders this without knowing which address the owner opened the
+ * dashboard on, so the full URL is filled in from the browser once hydrated.
+ */
+export function PreviewLink({ siteId, token }: { siteId: string; token: string | null }) {
+  const [pending, start] = useTransition();
+  const [state, setState] = useState<SiteState>({});
+  const [copied, setCopied] = useState(false);
+  const origin = useSyncExternalStore(subscribeNothing, () => window.location.origin, () => "");
+
+  const run = (action: (siteId: string) => Promise<SiteState>) =>
+    start(async () => {
+      setCopied(false);
+      setState(await action(siteId));
+    });
+
+  if (!token) {
+    return (
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" disabled={pending} onClick={() => run(createPreviewLink)} className={primaryButton}>
+          {pending ? "Creating…" : "Create preview link"}
+        </button>
+        <Result state={state} />
+      </div>
+    );
+  }
+
+  const url = `${origin}/p/${token}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // No clipboard access (an http origin, say): the field is selectable.
+    }
+  };
+
+  return (
+    <div className="mt-3">
+      <input
+        readOnly
+        value={url}
+        aria-label="Preview link"
+        onFocus={(e) => e.currentTarget.select()}
+        className={`${inputClass} font-mono text-sm`}
+      />
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button type="button" onClick={copy} className={primaryButton}>
+          {copied ? "Copied" : "Copy link"}
+        </button>
+        <ConfirmButton
+          label="New link"
+          question="Replace it? The current link stops working."
+          confirmLabel="Replace"
+          pending={pending}
+          onConfirm={() => run(createPreviewLink)}
+          className={secondaryButton}
+        />
+        <ConfirmButton
+          label="Revoke"
+          question="Turn the link off?"
+          confirmLabel="Revoke"
+          pending={pending}
+          onConfirm={() => run(revokePreviewLink)}
+          className={secondaryButton}
+        />
+        <Result state={state} />
+      </div>
     </div>
   );
 }
