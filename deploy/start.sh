@@ -7,8 +7,16 @@
 # up pointing at https://localhost:3004 — Auth.js never saw AUTH_URL and fell
 # back to the server's own bind address.
 #
-# Installed at <app>/start.sh and run by pm2.
+# Serves the release that `live` points at (see deploy/redeploy.sh). Node
+# resolves the symlink when it starts, so a running server keeps reading its own
+# release after `live` moves on. Before the first deploy that creates a release,
+# it falls back to the in-place build.
+#
+# Installed at <app>/start.sh and run by pm2; redeploy.sh refreshes that copy.
 set -a
 . "$(dirname "$0")/.env"
 set +a
-exec /opt/node22/bin/node "$(dirname "$0")/.next/standalone/server.js"
+
+server="$(dirname "$0")/live/server.js"
+[ -f "$server" ] || server="$(dirname "$0")/.next/standalone/server.js"
+exec /opt/node22/bin/node "$server"

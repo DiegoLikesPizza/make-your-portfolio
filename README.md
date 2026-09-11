@@ -112,9 +112,9 @@ By hand, on the box:
 ```
 
 [`deploy/redeploy.sh`](deploy/redeploy.sh) fast-forwards to `origin/main`, runs `npm install`,
-`npx prisma generate`, `npx prisma migrate deploy` and `npm run build`, copies `public` and
-`.next/static` into the standalone build, restarts pm2, and fails unless the app answers afterwards.
-It holds a lock, so two deploys never overlap.
+`npx prisma generate`, `npx prisma migrate deploy` and `npm run build`, copies the result into a new
+release and switches the site over to it (see *Zero-downtime releases* below), and fails unless the
+app answers afterwards. It holds a lock, so two deploys never overlap.
 
 #### Automatic deploys
 
@@ -148,8 +148,36 @@ One-time setup:
 
 4. Delete the private key file from your machine, then run *Deploy* once from the Actions tab.
 
-A deploy rebuilds in place, so the site can answer with errors for the minute or two `npm run build`
-takes — the same as a manual redeploy.
+#### Zero-downtime releases
+
+pm2 runs `start.sh`, which serves whatever `live` points at: a copy of a standalone build under
+`releases/<time>-<commit>/`. A deploy builds while the current release keeps serving, copies the
+result into a new release, renames a fresh symlink over `live` (so it is never missing, even for a
+moment) and restarts pm2, which takes about a second. Until that restart the running server keeps
+reading its own release.
+
+- If the new release doesn't answer its health check, `live` is pointed back at the previous
+  release and pm2 restarts onto it. The deploy still fails, so the Actions run shows red.
+- The newest three releases are kept.
+- `redeploy.sh` refreshes the app root's copy of `start.sh` on every deploy. The first deploy after
+  this change still builds in place once, because the server it replaces runs from `.next`; from
+  the second deploy on, a build no longer touches what's serving.
+- Migrations run before the switch, while the previous release is still serving, so they have to
+  keep working with it: adding a column is fine, renaming or dropping one takes two deploys.
+- [`deploy/test-redeploy.sh`](deploy/test-redeploy.sh) runs in CI against a throwaway repository and
+  checks the release, the swap, the pruning and the rollback.
+
+To roll back by hand, list the releases, newest first:
+
+```bash
+cd /srv/websites/make-your-portfolio.lfdiego.xyz/app && ls -1d releases/*/ | sort -r
+```
+
+then point `live` at the one you want and restart:
+
+```bash
+ln -sfn releases/<release> live.next && mv -Tf live.next live && pm2 restart make-your-portfolio
+```
 
 `npx prisma generate` is not optional. `src/generated/prisma` is gitignored, so
 a pull never brings a client that knows about a new model — the build fails
