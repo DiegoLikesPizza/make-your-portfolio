@@ -45,11 +45,12 @@ record at a literal, and it is how the dev server gets reached over the LAN.
 3. **HTTPS** is issued on the first visit. Nothing to do — on a Caddy install.
 
 > **The deployed box does not run Caddy.** It sits behind the nginx + certbot
-> stack that already serves three other sites, so a customer domain resolves and
-> verifies there but has no certificate: nginx has no equivalent of on-demand
-> TLS. The remaining work is a hook that runs `certbot --nginx -d <domain>` when
-> a domain verifies. The root [README](../README.md#custom-domains) has the
-> details; `caddy/` is kept for a clean-server install.
+> stack that already serves three other sites, and nginx has no equivalent of
+> on-demand TLS. There, the app issues the certificate itself the moment a
+> domain verifies, through `deploy/issue-cert.sh` — see
+> [Two front ends](#two-front-ends-two-ways-to-get-a-certificate). That needs
+> `CERT_ISSUE_COMMAND` set; without it a verified domain resolves but has no
+> HTTPS. `caddy/` is kept for a clean-server install.
 
 **Cloudflare users:** set the record to *DNS only* (grey cloud). A proxied
 record means Cloudflare terminates TLS itself and the certificate can never be
