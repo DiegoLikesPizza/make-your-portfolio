@@ -65,9 +65,14 @@ rather than 403 — Caddy treats any non-2xx as "do not issue", and 404 reveals
 nothing about which hostnames exist.
 
 **That endpoint must not be reachable from the public internet.** The Caddyfile
-calls it on `127.0.0.1` and the app binds to loopback. It is excluded from the
-proxy's matcher on purpose: Caddy passes the domain as a query parameter, not as
-the `Host` header.
+calls it on `127.0.0.1`, but binding the app to loopback is not what keeps it
+private — the proxy forwards public requests to that same loopback port. So
+every public-facing block answers `/api/caddy/*` with a 404 before proxying:
+both Caddyfile site blocks, both blocks of the nginx catch-all, and the blocks
+`deploy/issue-cert.sh` writes. The app can't enforce this itself, since behind
+a proxy every request arrives from loopback. It is excluded from the proxy's
+matcher on purpose: Caddy passes the domain as a query parameter, not as the
+`Host` header.
 
 ## Two front ends, two ways to get a certificate
 
