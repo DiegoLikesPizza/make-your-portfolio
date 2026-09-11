@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same branch makes the previous run's answer irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # Nothing in this job connects to a database or signs anyone in. These only
+      # satisfy code that reads them when it is imported.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      AUTH_SECRET: ci-only-not-a-secret
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          # What the deployed box runs; the Dockerfile's Node 24 is the newer of the two.
+          node-version: 22
+          cache: npm
+
+      # Not `npm ci`: the lockfile is generated on Windows and omits Linux-only
+      # optional packages, which `npm ci` refuses to fill in (see README).
+      - run: npm install --no-audit --no-fund
+
+      # src/generated/prisma is gitignored, and type-checking needs the client.
+      - run: npx prisma generate --config prisma7.config.ts
+
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
