@@ -43,7 +43,7 @@ export default async function SitePage({ params }: Props) {
   return (
     <>
       <PersonJsonLd doc={doc} assets={site.assets} origin={appOrigin()} />
-      <Portfolio ctx={{ doc, assets: site.assets }} analyticsSiteId={site.id} />
+      <Portfolio ctx={{ doc, assets: site.assets, siteId: site.id }} analyticsSiteId={site.id} />
     </>
   );
 }

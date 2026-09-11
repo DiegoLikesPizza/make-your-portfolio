@@ -29,6 +29,10 @@ export const LIMITS = {
   uploadsPerUser: { limit: 60, windowMs: HOUR },
   /** A real visitor loads a page a handful of times a minute at most. */
   hitPerIp: { limit: 30, windowMs: MINUTE },
+  /** Nobody writes six messages an hour to the same person. */
+  contactPerIp: { limit: 5, windowMs: HOUR },
+  /** Bounds how fast one owner's inbox can be filled from many addresses. */
+  contactPerSite: { limit: 50, windowMs: DAY },
 } satisfies Record<string, RateLimitWindow>;
 
 type Entry = { windowMs: number; stamps: number[] };

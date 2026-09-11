@@ -98,6 +98,7 @@ model Site {
   assets  Asset[]
   views   SiteView[]
   versions SiteVersion[]
+  messages ContactMessage[]
 
   @@index([userId])
 }
@@ -149,6 +150,26 @@ model SiteView {
 
   @@unique([siteId, day, source])
   @@index([siteId, day])
+}
+
+/// A message a visitor sent through the contact form on a published site
+/// (POST /api/contact). Read and deleted in the dashboard's Messages tab.
+model ContactMessage {
+  id     String @id @default(cuid())
+  siteId String
+
+  /// Optional; empty when the visitor left it out.
+  name  String
+  email String
+  body  String
+
+  createdAt DateTime  @default(now())
+  /// Null until the owner marks it read.
+  readAt    DateTime?
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, createdAt])
 }
 
 /// A custom hostname. Caddy's on-demand TLS asks /api/caddy/authorize before

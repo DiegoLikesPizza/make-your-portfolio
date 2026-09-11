@@ -28,6 +28,11 @@ export type RenderCtx = {
   assets: AssetMap;
   /** True inside the editor preview: disables anchor navigation hijacking. */
   preview?: boolean;
+  /**
+   * The published site being rendered. Set by the public routes only; without
+   * it (editor preview, demos, exports) the contact form falls back to mailto.
+   */
+  siteId?: string;
 };
 
 export type SectionProps<T extends SectionType = SectionType> = {

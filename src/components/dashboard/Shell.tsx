@@ -10,7 +10,7 @@ import { ASSIST_ENABLED } from "@/lib/assist/generate";
  * no gain. Everything else is a normal page and shares this.
  */
 
-type Tab = "editor" | "assist" | "analytics" | "settings" | "account";
+type Tab = "editor" | "assist" | "analytics" | "messages" | "settings" | "account";
 
 export function DashboardShell({
   siteId,
@@ -34,6 +34,7 @@ export function DashboardShell({
             ? ([{ key: "assist", label: "Write it for me", href: `/dashboard/${siteId}/assist` }] as const)
             : []),
           { key: "analytics", label: "Analytics", href: `/dashboard/${siteId}/analytics` },
+          { key: "messages", label: "Messages", href: `/dashboard/${siteId}/messages` },
           { key: "settings", label: "Settings", href: `/dashboard/${siteId}/settings` },
         ] as const)
       : []),
