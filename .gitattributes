@@ -1,0 +1,2 @@
+# Shell scripts run on Linux; a CRLF ending makes bash read "" as part of each command.
+*.sh text eol=lf
