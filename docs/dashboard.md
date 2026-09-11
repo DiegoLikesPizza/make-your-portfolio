@@ -67,6 +67,14 @@ the custom hostname were each edited somewhere different.
   deliberately **no redirect from the old handle**: a freed name has to be
   claimable by someone else, and a permanent redirect from a name that now
   belongs to a different person is worse than a 404.
+
+  A released handle — by renaming, deleting the site or deleting the account —
+  stays **reserved for 30 days** for whoever released it
+  ([`src/lib/handles.ts`](../src/lib/handles.ts)). Otherwise a stranger could
+  publish at an address that is still printed on its previous owner's CV.
+  The person who released it can take it back at any time; everyone else is
+  told it is taken until the 30 days are up. The reservation isn't tied to the
+  account, so it survives account deletion.
 - **Published** — when it went live, and *Take offline*, which clears
   `publishedDoc` and leaves the draft alone. (A `published` boolean would leave
   a stale document in the row for a later bug to serve.)

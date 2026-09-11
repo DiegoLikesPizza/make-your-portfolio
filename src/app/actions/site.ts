@@ -6,6 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { requireSiteOwner } from "@/lib/auth";
 import { revalidateSite } from "@/lib/sites";
+import { clearRelease, isReservedForSomeoneElse, releaseHandle } from "@/lib/handle-releases";
 import { normalizeSubdomain, SUBDOMAIN_MESSAGES, validateSubdomain } from "@/lib/reserved-subdomains";
 
 /** Site-level settings: the things that are about the site, not its content. */
@@ -16,8 +17,10 @@ export type SiteState = { error?: string; ok?: string };
  * Change the handle a site is published under.
  *
  * The old URL stops working immediately — there is no redirect, because a
- * freed handle has to be claimable by someone else, and a permanent redirect
- * from a name that now belongs to a different person is worse than a 404.
+ * freed handle has to become claimable by someone else, and a permanent
+ * redirect from a name that now belongs to a different person is worse than a
+ * 404. It stays reserved for its previous owner for a while first, though, so
+ * nobody else can take it the same second (src/lib/handles.ts).
  */
 export async function renameHandle(siteId: string, _prev: SiteState, formData: FormData): Promise<SiteState> {
   const owned = await requireSiteOwner(siteId);
@@ -29,11 +32,17 @@ export async function renameHandle(siteId: string, _prev: SiteState, formData: F
   const problem = validateSubdomain(next);
   if (problem) return { error: SUBDOMAIN_MESSAGES[problem] };
 
+  // A reservation reads as "taken", the same as a handle in use: whose it was
+  // is not something to tell a stranger.
   const taken = await db.site.findUnique({ where: { subdomain: next }, select: { id: true } });
-  if (taken) return { error: "That handle is taken." };
+  if (taken || (await isReservedForSomeoneElse(next, owned.user.id))) {
+    return { error: "That handle is taken." };
+  }
 
   const previous = owned.site.subdomain;
   await db.site.update({ where: { id: siteId }, data: { subdomain: next } });
+  await releaseHandle(previous, owned.user.id);
+  await clearRelease(next);
 
   // Both handles have to be dropped: the old one so it stops serving, the new
   // one because a 404 for it may already be cached from before it existed.
@@ -88,6 +97,7 @@ export async function deleteSite(siteId: string, _prev: SiteState, formData: For
   ).map((d) => d.hostname);
 
   await db.site.delete({ where: { id: siteId } });
+  await releaseHandle(owned.site.subdomain, owned.user.id);
   await revalidateSite(owned.site.subdomain, hostnames);
 
   redirect("/dashboard");

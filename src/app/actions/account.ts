@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { signOut } from "@/auth";
 import { getCurrentUser } from "@/lib/auth";
+import { releaseHandle } from "@/lib/handle-releases";
 
 /** Account-level actions: the things that are about the person, not the site. */
 
@@ -38,7 +39,12 @@ export async function deleteAccount(_prev: AccountState, formData: FormData): Pr
     return { error: "Type your email address exactly to confirm." };
   }
 
+  // Read before the cascade removes them: the handles stay reserved after the
+  // account is gone, so nobody else can publish at those addresses right away.
+  const sites = await db.site.findMany({ where: { userId: user.id }, select: { subdomain: true } });
+
   await db.user.delete({ where: { id: user.id } });
+  await Promise.all(sites.map((site) => releaseHandle(site.subdomain, user.id)));
 
   // Signing out redirects, so nothing after this runs.
   await signOut({ redirectTo: "/" });

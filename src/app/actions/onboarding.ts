@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { clearRelease, isReservedForSomeoneElse } from "@/lib/handle-releases";
 import { normalizeSubdomain, validateSubdomain, SUBDOMAIN_MESSAGES } from "@/lib/reserved-subdomains";
 import { starterDoc } from "@/lib/fixtures/starter";
 
@@ -23,8 +24,11 @@ export async function claimSubdomain(_prev: ClaimState, formData: FormData): Pro
   const existing = await db.site.findFirst({ where: { userId: user.id } });
   if (existing) redirect(`/dashboard/${existing.id}/edit`);
 
+  // A handle someone released recently reads as taken too (src/lib/handles.ts).
   const taken = await db.site.findUnique({ where: { subdomain } });
-  if (taken) return { error: "That address is taken. Try another." };
+  if (taken || (await isReservedForSomeoneElse(subdomain, user.id))) {
+    return { error: "That address is taken. Try another." };
+  }
 
   const site = await db.site.create({
     data: {
@@ -33,6 +37,7 @@ export async function claimSubdomain(_prev: ClaimState, formData: FormData): Pro
       draftDoc: starterDoc(user.name ?? "Your name", user.email) as unknown as object,
     },
   });
+  await clearRelease(subdomain);
 
   redirect(`/dashboard/${site.id}/edit`);
 }

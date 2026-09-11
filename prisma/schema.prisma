@@ -97,6 +97,17 @@ model Site {
   @@index([userId])
 }
 
+/// A handle given up by a rename, a deleted site or a deleted account, kept
+/// reserved for 30 days for the person who gave it up (src/lib/handles.ts).
+///
+/// `userId` is deliberately not a relation: the reservation has to outlive the
+/// account, or deleting an account would free its handles for anyone at once.
+model ReleasedHandle {
+  subdomain  String   @id
+  userId     String
+  releasedAt DateTime @default(now())
+}
+
 /// One day of traffic for one site, per referring source.
 ///
 /// Aggregated on write rather than stored per visit: no row per visitor, no IP,
