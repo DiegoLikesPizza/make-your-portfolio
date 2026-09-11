@@ -134,11 +134,17 @@ it there too. See [architecture.md](architecture.md#caching-and-the-rule-that-fo
 - `ASSETS_DIR` is served straight off disk by Caddy at `/assets/*`, never
   through Node.
 - Required in production: `APP_DOMAIN`, `NEXT_PUBLIC_APP_DOMAIN`,
-  `DATABASE_URL`, `AUTH_SECRET`, `ACME_EMAIL`, and `EMAIL_SERVER_HOST` — a
-  missing mail server is a hard error in production rather than a sign-in link
-  printed into a log file. Auth.js also needs `AUTH_URL` on the deployed box, or
-  every magic link points at the server's own bind address; see the deployment
-  notes in the root [README](../README.md).
+  `DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL`, `ACME_EMAIL`, and
+  `EMAIL_SERVER_HOST` — a missing mail server is a hard error in production
+  rather than a sign-in link printed into a log file.
+- **`AUTH_URL` is enforced at startup** by
+  [`src/instrumentation.ts`](../src/instrumentation.ts): in production, without
+  it the server answers every request with a 500 and logs
+  `AUTH_URL must be set in production`. Auth.js builds sign-in links from it, and
+  without it from the request's `Host` header — which the client controls, so
+  anyone could make the genuine sign-in email for someone else's address link
+  to their own server and collect the token. See also the deployment notes in
+  the root [README](../README.md).
 - Optional: `SERVER_IP` (apex verification), `AUTH_GITHUB_*` / `AUTH_GOOGLE_*`,
   `ANTHROPIC_API_KEY`.
 
