@@ -124,6 +124,35 @@ kind of name rather than a CNAME. When a CNAME to the app domain is found and
 still doesn't reach us, the error says exactly that instead of "points
 elsewhere".
 
+## Verified domains are re-checked daily
+
+Verification used to hold forever: a domain whose DNS later moved away stayed
+verified, kept passing the certificate gate and kept being served. Now the
+server re-checks every verified domain once a day
+([`src/lib/domain-recheck.ts`](../src/lib/domain-recheck.ts)).
+
+- It asks only whether the name **still reaches this server**. Ownership was
+  proven with the TXT record when the domain verified; requiring the record to
+  stay forever would take down every domain that verified before the TXT check
+  existed.
+- A domain is unverified only after **two consecutive failed checks**. One bad
+  DNS minute shouldn't take a working site offline, so a real move costs a
+  day's delay.
+- Unverifying drops the hostname's cache tag, so the site stops being served on
+  it straight away, and Settings says the domain stopped pointing here. A
+  failure short of that shows a warning on the domain instead.
+- If the server can't find its own address (no `SERVER_IP`, and `APP_DOMAIN`
+  doesn't resolve), the run is skipped rather than failing every domain.
+- Pressing *Re-check* is still immediate: the owner is asking "does it work
+  now?", so a manual check answers at once and resets the failure count.
+
+The schedule runs inside the Node process, started from `src/instrumentation.ts`
+in production: first a minute after boot, then every 24 hours. The work happens
+in `POST /api/internal/recheck-domains`, because dropping a cache tag only works
+inside a Route Handler. The scheduler calls it over loopback with a token
+derived from `AUTH_SECRET`; anything without that token gets a 404. Like the
+rate limiter this is per process — right for the single pm2 process.
+
 ## After any change to a Domain row, drop the cache tag
 
 An unverified hostname resolves to `null`, and `unstable_cache` stores that miss

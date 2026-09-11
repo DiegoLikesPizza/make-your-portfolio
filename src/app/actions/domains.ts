@@ -62,9 +62,12 @@ export async function verifyDomain(siteId: string, domainId: string): Promise<Do
 
   const result = await checkDomain(domain.hostname, domain.verifyToken, SERVER_IP);
 
+  const now = new Date();
   await db.domain.update({
     where: { id: domain.id },
-    data: { verified: result.ok, lastCheckedAt: new Date() },
+    // A manual check is the owner asking "does it work now?", so it answers at
+    // once. It's the daily re-check that waits for a second failure.
+    data: { verified: result.ok, lastCheckedAt: now, failedChecks: 0, ...(result.ok && { verifiedAt: now }) },
   });
 
   await revalidateHost(domain.hostname);

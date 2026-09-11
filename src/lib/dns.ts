@@ -30,6 +30,12 @@ export type DnsRecord = { type: "A" | "CNAME" | "TXT"; name: string; value: stri
 /** The label the ownership TXT record lives under, in front of the hostname. */
 const OWNERSHIP_LABEL = "_portfolio-verify";
 
+const UNKNOWN_SERVER: DnsCheck = {
+  ok: false,
+  found: [],
+  reason: "This server doesn't know its own address — set SERVER_IP.",
+};
+
 /** An apex domain (`diego.dev`) cannot use CNAME, so it needs an A record. */
 export function isApex(hostname: string): boolean {
   return hostname.split(".").length === 2;
@@ -48,7 +54,7 @@ function relativeName(hostname: string, label?: string): string {
  * whatever APP_DOMAIN resolves to is where visitors reach us — but that answer
  * is only right when nothing is proxying APP_DOMAIN.
  */
-async function serverAddresses(serverIp?: string): Promise<string[]> {
+export async function serverAddresses(serverIp?: string): Promise<string[]> {
   if (serverIp) return [serverIp];
   return dns.resolve4(APP_DOMAIN).catch(() => [] as string[]);
 }
@@ -86,12 +92,11 @@ export function hasOwnershipToken(records: string[][], token: string): boolean {
   return records.some((chunks) => chunks.join("") === expected);
 }
 
+/** Full verification: the zone is the user's, and the name reaches this server. */
 export async function checkDomain(hostname: string, token: string, serverIp?: string): Promise<DnsCheck> {
   try {
     const ours = await serverAddresses(serverIp);
-    if (ours.length === 0) {
-      return { ok: false, found: [], reason: "This server doesn't know its own address — set SERVER_IP." };
-    }
+    if (ours.length === 0) return UNKNOWN_SERVER;
 
     // Ownership first: pointing at us is necessary, but it is the TXT token
     // that says this account is the one allowed to serve the name.
@@ -104,34 +109,51 @@ export async function checkDomain(hostname: string, token: string, serverIp?: st
       };
     }
 
-    // Resolvers follow CNAMEs, so this one lookup covers both record shapes and
-    // is the only question that matters: does traffic for this name arrive
-    // here?
-    const addresses = await dns.resolve4(hostname).catch(() => [] as string[]);
-    if (addresses.some((address) => ours.includes(address))) return { ok: true };
-
-    const cname = (await dns.resolveCname(hostname).catch(() => [] as string[]))
-      .map((c) => c.replace(/\.$/, "").toLowerCase());
-
-    if (addresses.length === 0 && cname.length === 0) {
-      return { ok: false, found: [], reason: "Nothing resolves for this name yet." };
-    }
-
-    // Name the specific trap rather than saying "points elsewhere": this one
-    // looks correct to the person who set it up, and the record they were told
-    // to create is the one that produced it.
-    if (cname.includes(APP_DOMAIN)) {
-      return {
-        ok: false,
-        found: [...cname, ...addresses],
-        reason:
-          `This is a CNAME to ${APP_DOMAIN}, but that name doesn't resolve to this server ` +
-          `— it's behind a proxy or CDN. Use the A record shown above instead.`,
-      };
-    }
-
-    return { ok: false, found: [...cname, ...addresses], reason: "Points somewhere that isn't this server." };
+    return await pointsHere(hostname, ours);
   } catch (error) {
     return { ok: false, found: [], reason: (error as Error).message };
   }
+}
+
+/**
+ * Does `hostname` still reach this server? The daily re-check's question —
+ * ownership was already proven when the domain verified.
+ */
+export async function checkPointsHere(hostname: string, serverIp?: string): Promise<DnsCheck> {
+  try {
+    const ours = await serverAddresses(serverIp);
+    if (ours.length === 0) return UNKNOWN_SERVER;
+    return await pointsHere(hostname, ours);
+  } catch (error) {
+    return { ok: false, found: [], reason: (error as Error).message };
+  }
+}
+
+async function pointsHere(hostname: string, ours: string[]): Promise<DnsCheck> {
+  // Resolvers follow CNAMEs, so this one lookup covers both record shapes and
+  // is the only question that matters: does traffic for this name arrive here?
+  const addresses = await dns.resolve4(hostname).catch(() => [] as string[]);
+  if (addresses.some((address) => ours.includes(address))) return { ok: true };
+
+  const cname = (await dns.resolveCname(hostname).catch(() => [] as string[]))
+    .map((c) => c.replace(/\.$/, "").toLowerCase());
+
+  if (addresses.length === 0 && cname.length === 0) {
+    return { ok: false, found: [], reason: "Nothing resolves for this name yet." };
+  }
+
+  // Name the specific trap rather than saying "points elsewhere": this one
+  // looks correct to the person who set it up, and the record they were told
+  // to create is the one that produced it.
+  if (cname.includes(APP_DOMAIN)) {
+    return {
+      ok: false,
+      found: [...cname, ...addresses],
+      reason:
+        `This is a CNAME to ${APP_DOMAIN}, but that name doesn't resolve to this server ` +
+        `— it's behind a proxy or CDN. Use the A record shown above instead.`,
+    };
+  }
+
+  return { ok: false, found: [...cname, ...addresses], reason: "Points somewhere that isn't this server." };
 }
