@@ -18,6 +18,7 @@ import { VERSIONS_KEPT, versionsToPrune } from "../src/lib/versions";
 import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditionWidths, resolveAsset } from "../src/lib/assets";
 import { jsonForScript, personJsonLd, portfolioSitemapEntries } from "../src/lib/seo";
 import { CONTACT_LIMITS, parseContact } from "../src/lib/contact";
+import { normalizeUsername, pickRepos, repoToProject, toRepo, type GithubRepo } from "../src/lib/github";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -679,4 +680,66 @@ expectContact("something that isn't an object is refused", !parseContact("hello"
 const contactCases = 9;
 console.log(`\n${contactCases - contactFailures}/${contactCases} contact form cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures ? 1 : 0);
+// ------------------------------------------------------- github import
+let githubFailures = 0;
+const expectGithub = (label: string, ok: boolean, detail = "") => {
+  if (!ok) githubFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}github ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+expectGithub("a plain username", normalizeUsername(" octocat ") === "octocat");
+expectGithub(
+  "an @handle or a profile URL",
+  normalizeUsername("@octocat") === "octocat" && normalizeUsername("https://github.com/octocat/") === "octocat",
+);
+expectGithub(
+  "nothing that could reach another endpoint",
+  normalizeUsername("octocat/../../orgs/x") === null && normalizeUsername("a?per_page=1") === null && normalizeUsername("a%2Fb") === null,
+);
+expectGithub(
+  "hyphens only between characters",
+  normalizeUsername("-bad") === null && normalizeUsername("bad-") === null && normalizeUsername("a--b") === null,
+);
+expectGithub("at most 39 characters", normalizeUsername("a".repeat(39)) !== null && normalizeUsername("a".repeat(40)) === null);
+
+const repo = (over: Partial<GithubRepo>): GithubRepo => ({
+  name: "r", description: "", fork: false, archived: false, stars: 0,
+  pushedAt: "2026-01-01T00:00:00Z", createdAt: "2024-03-01T00:00:00Z",
+  language: "", topics: [], homepage: "", htmlUrl: "https://github.com/a/r", ...over,
+});
+const picked = pickRepos(
+  [
+    repo({ name: "fork", fork: true, stars: 99 }),
+    repo({ name: "old", stars: 5, pushedAt: "2025-01-01T00:00:00Z" }),
+    repo({ name: "new", stars: 5, pushedAt: "2026-06-01T00:00:00Z" }),
+    repo({ name: "top", stars: 50 }),
+  ],
+  3,
+);
+expectGithub("forks skipped, most starred first, then latest push", picked.map((r) => r.name).join() === "top,new,old", picked.map((r) => r.name).join());
+expectGithub("six at most", pickRepos(Array.from({ length: 10 }, (_, i) => repo({ name: `r${i}` }))).length === 6);
+
+const mapped = repoToProject(
+  repo({ name: "engine", description: "Analytical", language: "TypeScript", topics: ["typescript", "nextjs"], homepage: "https://engine.example" }),
+  "p1",
+);
+expectGithub("a homepage is the link, and the project is live", mapped.href === "https://engine.example" && mapped.status === "live");
+expectGithub("language and topics become tech, once each", mapped.tech.join() === "TypeScript,nextjs", mapped.tech.join());
+expectGithub("the year it was created", mapped.year === "2024" && mapped.title === "engine" && mapped.summary === "Analytical");
+const bare = repoToProject(repo({ homepage: "engine.example", archived: true }), "p2");
+expectGithub("a homepage without a scheme falls back to the repository", bare.href === "https://github.com/a/r", String(bare.href));
+expectGithub("archived stays archived", bare.status === "archived");
+expectGithub(
+  "a javascript: URL is never a link",
+  repoToProject(repo({ homepage: "javascript:alert(1)", htmlUrl: "javascript:alert(1)" }), "p3").href === undefined,
+);
+expectGithub(
+  "junk in the response is dropped",
+  toRepo({ name: 3 }) === null && toRepo(null) === null &&
+    toRepo({ name: "x", html_url: "https://github.com/a/x", topics: [1, "ok"] })?.topics.join() === "ok",
+);
+
+const githubCases = 13;
+console.log(`\n${githubCases - githubFailures}/${githubCases} github import cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures ? 1 : 0);

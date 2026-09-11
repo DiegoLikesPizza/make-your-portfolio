@@ -4,6 +4,7 @@ import { nanoid } from "nanoid";
 import type { Section } from "@/lib/schema/sections";
 import { Select, TextArea, TextInput, UrlInput } from "./fields";
 import { AssetInput } from "./AssetInput";
+import { GithubImport } from "./GithubImport";
 import { ListEditor } from "./ListEditor";
 import { CommaListInput, keepIds, LineListInput } from "./TokenField";
 import { RichTextArea } from "./RichText";
@@ -95,30 +96,36 @@ export function SectionForm({ section, onChange }: { section: Section; onChange:
 
     case "projects":
       return (
-        <ListEditor
-          label="Project"
-          items={section.data.items}
-          onChange={(items) => onChange({ ...section, data: { items } })}
-          create={() => ({ id: nanoid(8), title: "", summary: "", tech: [], status: "none" as const, featured: false })}
-          title={(p) => p.title || "Project"}
-          render={(p, update) => (
-            <>
-              <TextInput label="Title" value={p.title} onChange={(title) => update({ title })} />
-              <TextArea label="Summary" rows={3} value={p.summary} onChange={(summary) => update({ summary })} />
-              <CommaListInput label="Tech" value={p.tech} onChange={(tech) => update({ tech })} />
-              <TextInput label="Year" value={p.year ?? ""} onChange={(year) => update({ year })} />
-              <Select label="Status" value={p.status} options={STATUS_OPTIONS} onChange={(status) => update({ status })} />
-              <UrlInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
-              <AssetInput
-                label="Cover"
-                value={p.coverAssetId}
-                hint="Shown by the layouts with images."
-                onChange={(coverAssetId) => update({ coverAssetId })}
-              />
-              <TextInput label="Link label" value={p.linkLabel ?? ""} onChange={(linkLabel) => update({ linkLabel })} />
-            </>
-          )}
-        />
+        <div className="space-y-4">
+          <GithubImport
+            projectCount={section.data.items.length}
+            onImport={(items) => onChange({ ...section, data: { items } })}
+          />
+          <ListEditor
+            label="Project"
+            items={section.data.items}
+            onChange={(items) => onChange({ ...section, data: { items } })}
+            create={() => ({ id: nanoid(8), title: "", summary: "", tech: [], status: "none" as const, featured: false })}
+            title={(p) => p.title || "Project"}
+            render={(p, update) => (
+              <>
+                <TextInput label="Title" value={p.title} onChange={(title) => update({ title })} />
+                <TextArea label="Summary" rows={3} value={p.summary} onChange={(summary) => update({ summary })} />
+                <CommaListInput label="Tech" value={p.tech} onChange={(tech) => update({ tech })} />
+                <TextInput label="Year" value={p.year ?? ""} onChange={(year) => update({ year })} />
+                <Select label="Status" value={p.status} options={STATUS_OPTIONS} onChange={(status) => update({ status })} />
+                <UrlInput label="Link" value={p.href ?? ""} onChange={(href) => update({ href })} />
+                <AssetInput
+                  label="Cover"
+                  value={p.coverAssetId}
+                  hint="Shown by the layouts with images."
+                  onChange={(coverAssetId) => update({ coverAssetId })}
+                />
+                <TextInput label="Link label" value={p.linkLabel ?? ""} onChange={(linkLabel) => update({ linkLabel })} />
+              </>
+            )}
+          />
+        </div>
       );
 
     case "contact": {

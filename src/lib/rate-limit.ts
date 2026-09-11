@@ -33,6 +33,8 @@ export const LIMITS = {
   contactPerIp: { limit: 5, windowMs: HOUR },
   /** Bounds how fast one owner's inbox can be filled from many addresses. */
   contactPerSite: { limit: 50, windowMs: DAY },
+  /** Each import spends the server's shared GitHub API allowance. */
+  githubImportPerUser: { limit: 20, windowMs: HOUR },
 } satisfies Record<string, RateLimitWindow>;
 
 type Entry = { windowMs: number; stamps: number[] };
