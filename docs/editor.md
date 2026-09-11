@@ -139,6 +139,27 @@ clock. A placeholder that could name a URL would turn rendering somebody's
 portfolio into a request our server makes on their behalf.
 See [`src/lib/dynamic.ts`](../src/lib/dynamic.ts).
 
+### Import from GitHub
+
+The Projects form starts with an *Import from GitHub* field. A username — or
+`@name`, or the profile URL — turns that account's six most-starred public
+repositories into projects, forks skipped and ties broken by the latest push:
+name, description, language and topics as tech, the year it was created, the
+homepage as the link (the repository when there is none), and *archived* as
+the status.
+
+It replaces the list, asking first when there are projects to lose, and only
+the draft changes. The server action returns the projects instead of writing
+the draft: the editor has the draft open and autosaves it, so a write from the
+server would collide with its next save.
+
+The only host ever contacted is `api.github.com`. The username is checked
+against GitHub's own rules and becomes a single path segment, and redirects
+aren't followed. Imports are limited to 20 an hour per user. Without
+`GITHUB_TOKEN`, GitHub allows the whole server 60 requests an hour; a token
+with no permissions raises that to 5,000. See
+[`src/lib/github.ts`](../src/lib/github.ts).
+
 ### List fields
 
 "Tech", "Skills" and "Highlights" edit arrays through a text field. They keep
