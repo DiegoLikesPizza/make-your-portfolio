@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { appOrigin } from "@/lib/hosts";
 import { fontVariables } from "./fonts";
 import "./globals.css";
 
+const origin = appOrigin();
+
 export const metadata: Metadata = {
+  // Relative image URLs in page metadata resolve against this.
+  ...(origin && { metadataBase: new URL(origin) }),
   title: "Make Your Portfolio",
   description: "Build and publish a one-page portfolio in minutes.",
 };

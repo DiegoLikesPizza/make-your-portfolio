@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Portfolio } from "@/render/Portfolio";
 import { DEMO_HANDLES, demoDoc } from "@/lib/fixtures/demo";
 import { resolveDynamic } from "@/lib/dynamic";
+import { appOrigin } from "@/lib/hosts";
 import { portfolioMetadata } from "@/lib/portfolio-metadata";
 
 /**
@@ -28,8 +29,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { preset } = await params;
   const doc = docFor(preset);
   // The fixture sets `noindex`: six pages of near-identical copy are thin
-  // duplicate content, and /layouts is the surface meant to be indexed.
-  return doc ? portfolioMetadata(doc) : {};
+  // duplicate content, and /layouts is the surface meant to be indexed. A link
+  // to one still gets a proper preview.
+  return doc ? portfolioMetadata(doc, { cardPath: `/d/${preset}/og`, origin: appOrigin() }) : {};
 }
 
 export default async function DemoPage({ params }: Props) {

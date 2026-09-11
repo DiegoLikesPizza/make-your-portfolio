@@ -16,6 +16,7 @@ import { afterScheduledCheck, FAILED_CHECKS_BEFORE_UNVERIFY, recheckToken } from
 import { isPreviewToken, newPreviewToken } from "../src/lib/preview-links";
 import { VERSIONS_KEPT, versionsToPrune } from "../src/lib/versions";
 import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditionWidths, resolveAsset } from "../src/lib/assets";
+import { jsonForScript, personJsonLd, portfolioSitemapEntries } from "../src/lib/seo";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -579,4 +580,73 @@ expectUpload("a longer id containing it doesn't", !documentsUseAsset([docUsingAs
 const uploadCases = 7 + assetPathCases.length + 5;
 console.log(`\n${uploadCases - uploadFailures}/${uploadCases} upload cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures ? 1 : 0);
+// ------------------------------------------------------- search and sharing
+let seoFailures = 0;
+const expectSeo = (label: string, ok: boolean, detail = "") => {
+  if (!ok) seoFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}seo ${label}${ok ? "" : `  ${detail}`}`);
+};
+const ogImages = (m: ReturnType<typeof portfolioMetadata>) =>
+  ((m.openGraph as { images?: { url: string }[] } | undefined)?.images ?? []).map((i) => i.url);
+
+const shareAssets = { og1: { src: "/assets/s1/og1-1600.webp", width: 1600, height: 840 } };
+expectSeo("no card and no upload means no image", ogImages(portfolioMetadata(untitled)).length === 0);
+expectSeo(
+  "the generated card is the default image",
+  ogImages(portfolioMetadata(untitled, { cardPath: "/u/ada/og" })).join() === "/u/ada/og",
+);
+const withUpload = { ...untitled, meta: { ...untitled.meta, ogAssetId: "og1" } };
+expectSeo(
+  "an uploaded share image replaces the card",
+  ogImages(portfolioMetadata(withUpload, { cardPath: "/u/ada/og", assets: shareAssets })).join() === "/assets/s1/og1-1600.webp",
+);
+expectSeo(
+  "a share image that no longer exists falls back to the card",
+  ogImages(portfolioMetadata(withUpload, { cardPath: "/u/ada/og", assets: {} })).join() === "/u/ada/og",
+);
+const absoluteCard = ogImages(portfolioMetadata(untitled, { cardPath: "/u/ada/og", origin: "https://app.example" })).join();
+expectSeo("with an origin the image URL is absolute", absoluteCard === "https://app.example/u/ada/og", absoluteCard);
+
+const person = starterDoc("Ada Lovelace");
+person.profile = {
+  ...person.profile,
+  headline: "I build ==analytical== engines",
+  avatarAssetId: "og1",
+  links: [
+    { id: "a", label: "Site", href: "https://ada.example", icon: "globe" },
+    { id: "b", label: "Mail", href: "mailto:ada@example.com", icon: "globe" },
+  ],
+};
+const ld = personJsonLd(person, shareAssets, "https://app.example");
+expectSeo("structured data names the person", ld["@type"] === "Person" && ld.name === "Ada Lovelace");
+expectSeo("its description has no emphasis markers", ld.description === "I build analytical engines", String(ld.description));
+expectSeo("only web links become sameAs", JSON.stringify(ld.sameAs) === '["https://ada.example"]', JSON.stringify(ld.sameAs));
+expectSeo("the portrait is absolute", ld.image === "https://app.example/assets/s1/og1-1600.webp", String(ld.image));
+expectSeo("without an origin there is no image", !("image" in personJsonLd(person, shareAssets, null)));
+expectSeo(
+  "no value can close the script tag",
+  !jsonForScript({ name: "</script><script>alert(1)</script>" }).includes("</script>"),
+);
+
+const published = new Date("2026-09-01T00:00:00Z");
+const hiddenDoc = { ...untitled, meta: { ...untitled.meta, noindex: true } };
+const entries = portfolioSitemapEntries(
+  [
+    { subdomain: "ada", publishedAt: published, publishedDoc: untitled },
+    { subdomain: "hidden", publishedAt: published, publishedDoc: hiddenDoc },
+    { subdomain: "draft", publishedAt: null, publishedDoc: null },
+    { subdomain: "broken", publishedAt: published, publishedDoc: { nonsense: true } },
+  ],
+  "https://app.example",
+);
+expectSeo(
+  "the sitemap lists only indexable published pages",
+  entries.map((e) => e.url).join() === "https://app.example/u/ada",
+  entries.map((e) => e.url).join(),
+);
+expectSeo("with their publish date", entries[0]?.lastModified === published);
+
+const seoCases = 13;
+console.log(`\n${seoCases - seoFailures}/${seoCases} search and sharing cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures ? 1 : 0);

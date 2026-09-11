@@ -15,6 +15,19 @@
 /** The root domain, e.g. "example.localhost" in dev. */
 export const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN ?? "example.localhost";
 
+/**
+ * The app's public origin, for URLs that have to be absolute: sitemaps, social
+ * images, structured data. Taken from AUTH_URL, which production requires;
+ * null in development without it.
+ */
+export function appOrigin(): string | null {
+  try {
+    return process.env.AUTH_URL ? new URL(process.env.AUTH_URL).origin : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Subdomains that address the product itself, never a user's site. */
 const APP_HOSTS = new Set(["app", "www"]);
 

@@ -151,6 +151,32 @@ re-parsing every keystroke makes the field lossy against itself. The space in
 out before it can hold a character — which is why Enter used to look like a dead
 key. See [`TokenField.tsx`](../src/components/editor/TokenField.tsx).
 
+## Search and sharing
+
+Under *Profile & hero → Search & sharing*: the page title and description, and
+an optional **share image**. A published portfolio's `<head>` is built by
+`portfolioMetadata` in [`src/lib/portfolio-metadata.ts`](../src/lib/portfolio-metadata.ts),
+the same way on every route it is reached by.
+
+- **Link previews** use the uploaded share image when there is one, otherwise a
+  generated card — name, headline and role in the site's own colours — from
+  `/u/<handle>/og` ([`src/lib/share-card.tsx`](../src/lib/share-card.tsx)).
+  It's a plain route rather than the `opengraph-image` file convention: that
+  convention outranks the metadata, so an uploaded image could never replace it,
+  and on a custom domain its relative URL would resolve to the portfolio page.
+  On a custom domain the card URL is absolute, on the app's own domain.
+- **Structured data**: each public portfolio page carries a schema.org `Person`
+  block — name, role, headline, portrait and http(s) links, nothing the page
+  doesn't already show ([`src/lib/seo.ts`](../src/lib/seo.ts)).
+- **`/robots.txt`** keeps crawlers out of the dashboard, the API, private
+  preview links, exports and sign-in.
+- **`/sitemap.xml`** lists the app's public pages and every published
+  `/u/<handle>` that isn't set to *noindex*. Custom domains aren't listed: a
+  sitemap may only name URLs on its own host.
+
+Absolute URLs come from `AUTH_URL`, which production requires. Without it, in
+development, the card URL stays relative and structured data has no image.
+
 ## Autosave and publish
 
 - The preview updates after **150 ms**; the server write waits **800 ms**, so a
