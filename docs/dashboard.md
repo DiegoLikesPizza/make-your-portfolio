@@ -40,6 +40,17 @@ domain, or one of the site's own verified hostnames. That is not proof — an
 rather than billing, so the trade is stated rather than over-engineered. Views
 of an unpublished site are never counted.
 
+What a forged request *can* do is bounded
+([`src/lib/rate-limit.ts`](../src/lib/rate-limit.ts),
+[`src/lib/analytics.ts`](../src/lib/analytics.ts)):
+
+- **30 views a minute per client per site.** Enough for any real visitor, not
+  enough for a loop to move the number meaningfully.
+- **A source must look like a hostname**, or it is recorded as a direct visit.
+- **At most 50 distinct sources per site per day.** Every source is its own
+  row, so without a cap made-up referrers would grow the table without bound;
+  past the cap they are counted under `other`.
+
 The chart is one bar per day, including days with none: charting only the days
 that have data is how a fortnight of silence becomes a flat line through
 nothing. Zero days render as a dim 2px baseline tick so they can still be
@@ -80,6 +91,10 @@ it.
 **What it won't do:** invent employers, dates, clients, metrics or degrees. The
 system prompt is explicit that a thin description should produce a short page
 rather than a fabricated one.
+
+**Limited to 10 generations a day per user.** Each one is a large model call
+billed to the server's key, and anyone can sign up. A description rejected for
+being too short or too long doesn't count against it.
 
 **How it stays valid.** The model is asked for a *brief* — a small content-only
 schema in [`src/lib/assist/brief.ts`](../src/lib/assist/brief.ts) — not a

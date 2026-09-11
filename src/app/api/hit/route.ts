@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
 import { normalizeHost, resolveHost } from "@/lib/hosts";
+import { MAX_SOURCES_PER_DAY, normalizeSource, OVERFLOW_SOURCE } from "@/lib/analytics";
+import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 /**
  * One page view, counted.
@@ -13,6 +15,10 @@ import { normalizeHost, resolveHost } from "@/lib/hosts";
  * a curl loop. It is not proof — a determined person can forge an Origin from
  * outside a browser — and this is a vanity number, not billing, so that trade is
  * the right one to state rather than to over-engineer.
+ *
+ * What a forged request can do is bounded instead: a rate limit per client per
+ * site caps how fast a count can be inflated, and sources are validated and
+ * capped per day so the table can't be grown with made-up referrers.
  */
 
 /** Midnight UTC today, which is the granularity of a row. */
@@ -35,6 +41,23 @@ async function servesSite(host: string, siteId: string, subdomain: string) {
     select: { id: true },
   });
   return Boolean(domain);
+}
+
+/**
+ * The source a view is recorded under: its own row if it already has one or
+ * there is room for a new one today, `other` once the day's cap is reached.
+ */
+async function bucketFor(siteId: string, day: Date, source: string) {
+  if (!source) return source;
+
+  const existing = await db.siteView.findUnique({
+    where: { siteId_day_source: { siteId, day, source } },
+    select: { id: true },
+  });
+  if (existing) return source;
+
+  const recorded = await db.siteView.count({ where: { siteId, day } });
+  return recorded < MAX_SOURCES_PER_DAY ? source : OVERFLOW_SOURCE;
 }
 
 export async function POST(request: Request) {
@@ -67,11 +90,16 @@ export async function POST(request: Request) {
     return new Response(null, { status: 204 });
   }
 
-  const source = typeof payload.source === "string" ? payload.source.slice(0, 120) : "";
+  if (!rateLimit(`hit:${site.id}:${clientIp(request.headers)}`, LIMITS.hitPerIp).ok) {
+    return new Response(null, { status: 204 });
+  }
+
+  const day = today();
+  const source = await bucketFor(site.id, day, normalizeSource(payload.source));
 
   await db.siteView.upsert({
-    where: { siteId_day_source: { siteId: site.id, day: today(), source } },
-    create: { siteId: site.id, day: today(), source, count: 1 },
+    where: { siteId_day_source: { siteId: site.id, day, source } },
+    create: { siteId: site.id, day, source, count: 1 },
     update: { count: { increment: 1 } },
   });
 

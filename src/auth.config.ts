@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
+import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 /**
  * Which sign-in methods are available depends on what is configured.
@@ -44,6 +45,15 @@ providers.push(
     },
     from: process.env.EMAIL_FROM ?? "hello@example.localhost",
     async sendVerificationRequest({ identifier, url, provider, request }) {
+      // Limited here rather than on the sign-in page: POST
+      // /api/auth/signin/nodemailer reaches this function without the page's
+      // form. Per address stops one inbox being flooded; per IP stops one
+      // client spraying many.
+      const allowed =
+        rateLimit(`signin:email:${identifier.toLowerCase()}`, LIMITS.signInPerEmail).ok &&
+        rateLimit(`signin:ip:${clientIp(request.headers)}`, LIMITS.signInPerIp).ok;
+      if (!allowed) throw new Error("Too many sign-in emails requested");
+
       // No SMTP configured: print the link instead of failing. This keeps local
       // sign-in working with zero infrastructure, and refuses to do so in
       // production, where a link in a log file is a security problem.
@@ -63,7 +73,6 @@ providers.push(
         subject: "Your sign-in link",
         text: `Sign in to Make Your Portfolio:\n${url}\n\nIf you didn't request this, ignore it.`,
       });
-      void request;
     },
   }),
 );
