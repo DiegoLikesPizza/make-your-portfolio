@@ -10,6 +10,7 @@ import { isSafeHref } from "../src/lib/schema/sections";
 import { migrate, portfolioDoc } from "../src/lib/schema/portfolio";
 import { starterDoc } from "../src/lib/fixtures/starter";
 import { contentSecurityPolicy } from "../src/lib/csp";
+import { portfolioMetadata } from "../src/lib/portfolio-metadata";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -397,4 +398,40 @@ expectCsp("images from this origin only", !directive(prod, "img-src").includes("
 const cspCases = 9;
 console.log(`\n${cspCases - cspFailures}/${cspCases} content security policy cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures ? 1 : 0);
+// ------------------------------------------------------- portfolio metadata
+//
+// Every route a portfolio is reached by shares this. A route without it showed
+// the app's own title instead of the person's.
+let metaFailures = 0;
+const expectMeta = (label: string, ok: boolean, detail = "") => {
+  if (!ok) metaFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}metadata ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const untitled = starterDoc("Ada Lovelace");
+untitled.meta = { ...untitled.meta, title: "", description: "", noindex: false };
+const fallback = portfolioMetadata(untitled);
+const ogTitle = (m: ReturnType<typeof portfolioMetadata>) => (m.openGraph as { title?: unknown } | undefined)?.title;
+
+expectMeta("title falls back to the person's name", fallback.title === "Ada Lovelace — Portfolio", `(got ${String(fallback.title)})`);
+expectMeta("never the app's own name", fallback.title !== "Make Your Portfolio");
+expectMeta(
+  "description falls back to the headline, without markup",
+  typeof fallback.description === "string" && fallback.description.length > 0 && !/==|\*\*/.test(fallback.description),
+  `(got ${String(fallback.description)})`,
+);
+expectMeta("link preview uses the same title", ogTitle(fallback) === fallback.title);
+expectMeta("indexable unless the owner says otherwise", fallback.robots === undefined);
+
+const titled = portfolioMetadata({ ...untitled, meta: { ...untitled.meta, title: "Ada's work", noindex: true } });
+expectMeta("an explicit title is used as written", titled.title === "Ada's work" && ogTitle(titled) === "Ada's work");
+expectMeta(
+  "noindex reaches robots",
+  (titled.robots as { index?: boolean } | undefined)?.index === false,
+  `(got ${JSON.stringify(titled.robots)})`,
+);
+
+const metaCases = 7;
+console.log(`\n${metaCases - metaFailures}/${metaCases} portfolio metadata cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures ? 1 : 0);
