@@ -6,6 +6,7 @@ import { requireSiteOwner } from "@/lib/auth";
 import { migrate, portfolioDoc } from "@/lib/schema/portfolio";
 import { applyBrief } from "@/lib/assist/brief";
 import { generateBrief } from "@/lib/assist/generate";
+import { describeWait, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 /**
  * "Write it for me".
@@ -28,6 +29,13 @@ export async function writeDraft(siteId: string, _prev: AssistState, formData: F
   }
   if (about.length > 8000) {
     return { error: "That's longer than this needs. Trim it to the highlights." };
+  }
+
+  // After validation, so a rejected description doesn't use up an attempt, and
+  // before the model call, which is the expensive part being limited.
+  const allowed = rateLimit(`assist:${owned.user.id}`, LIMITS.assistPerUser);
+  if (!allowed.ok) {
+    return { error: `That's the daily limit for generated drafts. Try again in ${describeWait(allowed.retryAfterMs)}.` };
   }
 
   const result = await generateBrief(about);

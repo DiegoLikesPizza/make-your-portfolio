@@ -4,6 +4,8 @@ import { validateSubdomain, normalizeSubdomain } from "../src/lib/reserved-subdo
 import { resolveText, resolveDynamic } from "../src/lib/dynamic";
 import { hasOwnershipToken, ownershipRecord } from "../src/lib/dns";
 import { isStaleClaim } from "../src/lib/domain-claims";
+import { clientIp, describeWait, rateLimit } from "../src/lib/rate-limit";
+import { normalizeSource } from "../src/lib/analytics";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -253,4 +255,63 @@ expectDomain("a verified domain never goes stale", !isStaleClaim({ verified: tru
 const domainCases = ownershipCases.length + 5;
 console.log(`\n${domainCases - domainFailures}/${domainCases} domain ownership cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures ? 1 : 0);
+// ------------------------------------------------------- rate limiting
+//
+// Explicit timestamps, so the window can be walked through without waiting.
+let limitFailures = 0;
+const expectLimit = (label: string, ok: boolean, detail = "") => {
+  if (!ok) limitFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}limit ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const window3 = { limit: 3, windowMs: 1000 };
+const T = 1_000_000;
+const attempts = [0, 100, 200, 300].map((dt) => rateLimit("test:a", window3, T + dt));
+expectLimit("allows up to the limit", attempts.slice(0, 3).every((r) => r.ok));
+
+const refused = attempts[3];
+expectLimit("refuses the next one inside the window", !refused.ok);
+expectLimit(
+  "says when the oldest attempt leaves the window",
+  !refused.ok && refused.retryAfterMs === 700,
+  `(got ${refused.ok ? "ok" : refused.retryAfterMs})`,
+);
+// Sliding, not fixed: at T+1050 only the first attempt has aged out.
+expectLimit("frees one slot as the oldest attempt ages out", rateLimit("test:a", window3, T + 1050).ok);
+expectLimit("and only one", !rateLimit("test:a", window3, T + 1060).ok);
+expectLimit("keys are independent", rateLimit("test:b", window3, T + 300).ok);
+
+// The last X-Forwarded-For hop is the one our proxy added; earlier ones are the client's.
+const ipCases: [string, Record<string, string>, string][] = [
+  ["single hop", { "x-forwarded-for": "203.0.113.7" }, "203.0.113.7"],
+  ["a client-forged hop before ours", { "x-forwarded-for": "1.1.1.1, 203.0.113.7" }, "203.0.113.7"],
+  ["X-Real-IP is not trusted", { "x-real-ip": "1.1.1.1" }, "unknown"],
+  ["no header", {}, "unknown"],
+];
+for (const [label, headers, expected] of ipCases) {
+  const actual = clientIp(new Headers(headers));
+  expectLimit(`clientIp ${label}`, actual === expected, `(got ${actual})`);
+}
+
+expectLimit("describeWait in minutes", describeWait(90_000) === "2 minutes", `(got ${describeWait(90_000)})`);
+expectLimit("describeWait in hours", describeWait(3 * 3_600_000) === "3 hours", `(got ${describeWait(3 * 3_600_000)})`);
+
+const sourceCases: [unknown, string][] = [
+  ["news.ycombinator.com", "news.ycombinator.com"],
+  ["LinkedIn.com", "linkedin.com"],
+  ["localhost:3000", "localhost:3000"],
+  // Anything a forged beacon might send that isn't a hostname counts as direct.
+  ["<script>", ""],
+  ["has spaces.com", ""],
+  ["a".repeat(121), ""],
+  [42, ""],
+];
+for (const [input, expected] of sourceCases) {
+  const actual = normalizeSource(input);
+  expectLimit(`source ${String(input).slice(0, 24)}`, actual === expected, `(got "${actual}")`);
+}
+
+const limitCases = 6 + ipCases.length + 2 + sourceCases.length;
+console.log(`\n${limitCases - limitFailures}/${limitCases} rate limit cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures ? 1 : 0);
