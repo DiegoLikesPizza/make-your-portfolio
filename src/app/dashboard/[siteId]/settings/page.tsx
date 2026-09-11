@@ -5,7 +5,7 @@ import { APP_DOMAIN } from "@/lib/hosts";
 import { ownershipRecord, requiredRecord } from "@/lib/dns";
 import { Card, DashboardShell } from "@/components/dashboard/Shell";
 import { DomainManager } from "./DomainManager";
-import { DeleteSiteForm, HandleForm, PublishState } from "./SiteForms";
+import { DeleteSiteForm, HandleForm, PreviewLink, PublishState } from "./SiteForms";
 
 export const metadata = { title: "Settings" };
 
@@ -37,6 +37,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
 
       <Card title="Published">
         <PublishState siteId={siteId} publishedAt={owned.site.publishedAt?.toISOString() ?? null} />
+      </Card>
+
+      <Card
+        title="Preview link"
+        hint="Share the draft before you publish. Anyone with the link can see it; it isn't indexed or counted in analytics."
+      >
+        <PreviewLink siteId={siteId} token={owned.site.previewToken} />
       </Card>
 
       <Card
