@@ -11,6 +11,7 @@ import { migrate, portfolioDoc } from "../src/lib/schema/portfolio";
 import { starterDoc } from "../src/lib/fixtures/starter";
 import { contentSecurityPolicy } from "../src/lib/csp";
 import { portfolioMetadata } from "../src/lib/portfolio-metadata";
+import { isHandleCoolingDown } from "../src/lib/handles";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -434,4 +435,23 @@ expectMeta(
 const metaCases = 7;
 console.log(`\n${metaCases - metaFailures}/${metaCases} portfolio metadata cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures ? 1 : 0);
+// ------------------------------------------------------- released handles
+//
+// A released handle stays reserved for its previous owner, so nobody else can
+// publish at an address that is still printed somewhere.
+let handleFailures = 0;
+const expectHandle = (label: string, ok: boolean) => {
+  if (!ok) handleFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}handle ${label}`);
+};
+
+const releasedByAda = { userId: "ada", releasedAt: daysAgo(10) };
+expectHandle("a handle nobody released is free", !isHandleCoolingDown(null, "bob", NOW));
+expectHandle("the person who released it can take it back", !isHandleCoolingDown(releasedByAda, "ada", NOW));
+expectHandle("anyone else is refused within 30 days", isHandleCoolingDown(releasedByAda, "bob", NOW));
+expectHandle("anyone can claim it after 30 days", !isHandleCoolingDown({ userId: "ada", releasedAt: daysAgo(31) }, "bob", NOW));
+
+const handleCases = 4;
+console.log(`\n${handleCases - handleFailures}/${handleCases} released handle cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures ? 1 : 0);
