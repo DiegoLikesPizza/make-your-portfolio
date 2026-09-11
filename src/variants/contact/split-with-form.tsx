@@ -2,15 +2,15 @@ import { Reveal } from "@/render/primitives/Reveal";
 import { SectionIndex } from "@/render/primitives/Section";
 import { LinkIcon } from "@/render/primitives/LinkIcon";
 import { highlight } from "@/lib/text";
-import { MailtoForm } from "@/render/primitives/MailtoForm";
+import { ContactForm } from "@/render/primitives/ContactForm";
 import type { SectionProps } from "@/render/context";
 
 /**
  * Copy and channels left, a message form right.
  *
- * The form composes a `mailto:` rather than posting anywhere — there is no
- * submissions backend, and a form that quietly discards messages is worse than
- * no form. It opens the visitor's mail client with everything filled in.
+ * On the published page the form delivers to the owner's dashboard (and email,
+ * when the server has SMTP). Elsewhere it opens the visitor's mail client with
+ * everything filled in — see ContactForm.
  */
 export default function ContactSplitWithForm({ section, index, ctx }: SectionProps<"contact">) {
   const m = ctx.doc.design.tokens.motion;
@@ -60,13 +60,7 @@ export default function ContactSplitWithForm({ section, index, ctx }: SectionPro
         </div>
 
         <Reveal motionStyle={m} delay={0.1}>
-          {address ? (
-            <MailtoForm address={address} />
-          ) : (
-            <p className="text-sm text-[var(--foreground-subtle)]">
-              Add an email address in your profile to enable the message form.
-            </p>
-          )}
+          <ContactForm siteId={ctx.siteId} address={address} />
         </Reveal>
       </div>
     </div>

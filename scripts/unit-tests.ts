@@ -17,6 +17,7 @@ import { isPreviewToken, newPreviewToken } from "../src/lib/preview-links";
 import { VERSIONS_KEPT, versionsToPrune } from "../src/lib/versions";
 import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditionWidths, resolveAsset } from "../src/lib/assets";
 import { jsonForScript, personJsonLd, portfolioSitemapEntries } from "../src/lib/seo";
+import { CONTACT_LIMITS, parseContact } from "../src/lib/contact";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -649,4 +650,33 @@ expectSeo("with their publish date", entries[0]?.lastModified === published);
 const seoCases = 13;
 console.log(`\n${seoCases - seoFailures}/${seoCases} search and sharing cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures ? 1 : 0);
+// ------------------------------------------------------- contact form
+let contactFailures = 0;
+const expectContact = (label: string, ok: boolean, detail = "") => {
+  if (!ok) contactFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}contact ${label}${ok ? "" : `  ${detail}`}`);
+};
+const validMessage = { siteId: "s1", name: " Ada ", email: "ada@example.com", message: "Hello\r\nthere" };
+const accepted = parseContact(validMessage);
+expectContact(
+  "a normal message is accepted, trimmed, with newlines normalised",
+  accepted.ok && accepted.data.name === "Ada" && accepted.data.message === "Hello\nthere" && !accepted.spam,
+  JSON.stringify(accepted),
+);
+expectContact("a name is optional", parseContact({ ...validMessage, name: "" }).ok);
+expectContact("an email address is required", !parseContact({ ...validMessage, email: "" }).ok);
+expectContact("an address can't smuggle mailto parameters", !parseContact({ ...validMessage, email: "a@b.com?cc=x@y.com" }).ok);
+expectContact("a name can't carry a mail header", !parseContact({ ...validMessage, name: "Ada\nBcc: x@y.com" }).ok);
+expectContact("an empty message is refused", !parseContact({ ...validMessage, message: "   " }).ok);
+expectContact(
+  "an over-long message is refused",
+  !parseContact({ ...validMessage, message: "x".repeat(CONTACT_LIMITS.message + 1) }).ok,
+);
+const trapped = parseContact({ ...validMessage, website: "https://spam.example" });
+expectContact("a filled-in honeypot is flagged as spam", trapped.ok && trapped.spam);
+expectContact("something that isn't an object is refused", !parseContact("hello").ok && !parseContact(null).ok);
+
+const contactCases = 9;
+console.log(`\n${contactCases - contactFailures}/${contactCases} contact form cases passed`);
+
+process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures ? 1 : 0);

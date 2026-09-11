@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
-import { normalizeHost, resolveHost } from "@/lib/hosts";
 import { MAX_SOURCES_PER_DAY, normalizeSource, OVERFLOW_SOURCE } from "@/lib/analytics";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { requestHost, servesSite } from "@/lib/site-origin";
 
 /**
  * One page view, counted.
@@ -25,22 +25,6 @@ import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 function today(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-}
-
-/** Is `host` one of the addresses this site is served on? */
-async function servesSite(host: string, siteId: string, subdomain: string) {
-  if (!host) return false;
-  const target = resolveHost(host);
-
-  // The app's own domain (and localhost in development) serves /u/<handle>.
-  if (target.kind === "app") return true;
-  if (target.kind === "subdomain") return target.subdomain === subdomain;
-
-  const domain = await db.domain.findFirst({
-    where: { hostname: target.hostname, siteId, verified: true },
-    select: { id: true },
-  });
-  return Boolean(domain);
 }
 
 /**
@@ -78,15 +62,7 @@ export async function POST(request: Request) {
   // A draft has no public URL, so a view of one is either a preview or a forgery.
   if (!site?.publishedAt) return new Response(null, { status: 204 });
 
-  // sendBeacon sends Origin; a few browsers only send Referer.
-  const origin = request.headers.get("origin") ?? request.headers.get("referer") ?? "";
-  let host = "";
-  try {
-    host = normalizeHost(new URL(origin).host);
-  } catch {
-    host = "";
-  }
-  if (!(await servesSite(host, site.id, site.subdomain))) {
+  if (!(await servesSite(requestHost(request), site.id, site.subdomain))) {
     return new Response(null, { status: 204 });
   }
 

@@ -56,6 +56,31 @@ that have data is how a fortnight of silence becomes a flat line through
 nothing. Zero days render as a dim 2px baseline tick so they can still be
 hovered.
 
+## Messages — `/dashboard/<siteId>/messages`
+
+What visitors send through the *split with form* contact layout, newest first,
+with *Mark as read*, *Delete* and the visitor's address to reply to.
+
+On the published page the form posts to `/api/contact`
+([route](../src/app/api/contact/route.ts)). The message is stored first, then
+emailed to the owner when `EMAIL_SERVER_HOST` is set, with Reply-To set to the
+visitor — so a mail server that is down never loses one. In the editor preview,
+the demos and exports there is no site to deliver to, and the form falls back to
+opening the visitor's mail app.
+
+The endpoint is unauthenticated, and guarded like `/api/hit`:
+
+- **Published sites only**, and only from one of the site's own pages (the same
+  origin check, [`src/lib/site-origin.ts`](../src/lib/site-origin.ts)).
+- **Length limits**: name 100, email 254, message 5,000 characters
+  ([`src/lib/contact.ts`](../src/lib/contact.ts)). Names can't contain control
+  characters and addresses can't contain `?`, `&`, commas or quotes, so neither
+  can inject mail headers or extra recipients.
+- **A honeypot field** visitors never see. A request that fills it in gets a
+  success response and is dropped.
+- **5 messages an hour per visitor per site, and 50 a day per site.** Like every
+  limit here these are per process.
+
 ## Settings — `/dashboard/<siteId>/settings`
 
 Replaces the old standalone Domains page, which now permanently redirects here.
@@ -91,7 +116,7 @@ the custom hostname were each edited somewhere different.
   and never counted in analytics. *New link* replaces it (the old one stops
   working) and *Revoke* turns it off.
 - **Your own domain** — see [hosting.md](hosting.md).
-- **Delete site** — cascades to domains, assets and views; the account stays.
+- **Delete site** — cascades to domains, assets, views and messages; the account stays.
   Gated on typing the handle.
 
 ## Write it for me — `/dashboard/<siteId>/assist`

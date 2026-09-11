@@ -3,6 +3,9 @@ import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
 import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
+import { hasSmtp, mailFrom, sendMail, smtpServer } from "@/lib/mail";
+
+export { hasSmtp };
 
 /**
  * Which sign-in methods are available depends on what is configured.
@@ -14,7 +17,6 @@ import { clientIp, LIMITS, rateLimit } from "@/lib/rate-limit";
 
 export const hasGitHub = Boolean(process.env.AUTH_GITHUB_ID && process.env.AUTH_GITHUB_SECRET);
 export const hasGoogle = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
-export const hasSmtp = Boolean(process.env.EMAIL_SERVER_HOST);
 
 /** Magic links always work: without SMTP the link is printed to the server log. */
 export const hasEmail = true;
@@ -36,15 +38,9 @@ if (hasGoogle) {
 
 providers.push(
   Nodemailer({
-    server: {
-      host: process.env.EMAIL_SERVER_HOST ?? "localhost",
-      port: Number(process.env.EMAIL_SERVER_PORT ?? 1025),
-      auth: process.env.EMAIL_SERVER_USER
-        ? { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD }
-        : undefined,
-    },
-    from: process.env.EMAIL_FROM ?? "hello@example.localhost",
-    async sendVerificationRequest({ identifier, url, provider, request }) {
+    server: smtpServer,
+    from: mailFrom,
+    async sendVerificationRequest({ identifier, url, request }) {
       // Limited here rather than on the sign-in page: POST
       // /api/auth/signin/nodemailer reaches this function without the page's
       // form. Per address stops one inbox being flooded; per IP stops one
@@ -65,11 +61,8 @@ providers.push(
         return;
       }
 
-      const { createTransport } = await import("nodemailer");
-      const transport = createTransport(provider.server);
-      await transport.sendMail({
+      await sendMail({
         to: identifier,
-        from: provider.from,
         subject: "Your sign-in link",
         text: `Sign in to Make Your Portfolio:\n${url}\n\nIf you didn't request this, ignore it.`,
       });
