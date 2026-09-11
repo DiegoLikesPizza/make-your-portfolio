@@ -82,6 +82,11 @@ server {
 
     client_max_body_size 20M;
 
+    # Never public: it tells whoever asks which hostnames are verified.
+    location /api/caddy/ {
+        return 404;
+    }
+
     location / {
         proxy_pass http://${UPSTREAM};
         proxy_http_version 1.1;
