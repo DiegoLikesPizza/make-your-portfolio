@@ -2,6 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { addDomain, removeDomain, verifyDomain, type DomainState } from "@/app/actions/domains";
+import { ConfirmButton } from "@/components/dashboard/ConfirmButton";
 import { formatDateTime } from "@/lib/dates";
 import type { DnsRecord } from "@/lib/dns";
 
@@ -116,14 +117,14 @@ export function DomainManager({
               >
                 {busy ? "Checking…" : d.verified ? "Re-check" : "Verify"}
               </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => run(() => removeDomain(siteId, d.id))}
+              <ConfirmButton
+                label="Remove"
+                question={`Stop serving the site on ${d.hostname}?`}
+                confirmLabel="Remove"
+                pending={busy}
+                onConfirm={() => run(() => removeDomain(siteId, d.id))}
                 className="text-sm text-neutral-500 underline-offset-4 hover:underline disabled:opacity-40"
-              >
-                Remove
-              </button>
+              />
               {d.lastCheckedAt && (
                 <span className="text-xs text-neutral-400">
                   Checked {formatDateTime(d.lastCheckedAt)}
