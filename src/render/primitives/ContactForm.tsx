@@ -67,16 +67,25 @@ export function ContactForm({ siteId, address }: { siteId?: string; address: str
   const canSend = Boolean(siteId || address);
 
   return (
-    <form onSubmit={submit} className="relative space-y-4">
+    <form
+      onSubmit={submit}
+      // Without JavaScript — an exported HTML file — the browser still hands a
+      // mailto form to the visitor's mail app. With it, `submit` takes over.
+      action={!siteId && address ? `mailto:${address}` : undefined}
+      method={!siteId && address ? "post" : undefined}
+      encType={!siteId && address ? "text/plain" : undefined}
+      className="relative space-y-4"
+    >
       <label className="block">
         <span className={label}>Name</span>
-        <input className={field} value={name} maxLength={CONTACT_LIMITS.name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+        <input className={field} name="name" value={name} maxLength={CONTACT_LIMITS.name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
       </label>
       <label className="block">
         <span className={label}>Email</span>
         <input
           className={field}
           type="email"
+          name="email"
           value={email}
           maxLength={CONTACT_LIMITS.email}
           onChange={(e) => setEmail(e.target.value)}
@@ -89,6 +98,7 @@ export function ContactForm({ siteId, address }: { siteId?: string; address: str
         <textarea
           className={field}
           rows={5}
+          name="message"
           value={message}
           maxLength={CONTACT_LIMITS.message}
           onChange={(e) => setMessage(e.target.value)}

@@ -19,6 +19,7 @@ import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditi
 import { jsonForScript, personJsonLd, portfolioSitemapEntries } from "../src/lib/seo";
 import { CONTACT_LIMITS, parseContact } from "../src/lib/contact";
 import { normalizeUsername, pickRepos, repoToProject, toRepo, type GithubRepo } from "../src/lib/github";
+import { exportDoc, exportFileName, inlineExport, stripScripts } from "../src/lib/export";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -742,4 +743,100 @@ expectGithub(
 const githubCases = 13;
 console.log(`\n${githubCases - githubFailures}/${githubCases} github import cases passed`);
 
-process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures ? 1 : 0);
+// ------------------------------------------------------- html export
+let exportFailures = 0;
+const expectExport = (label: string, ok: boolean, detail = "") => {
+  if (!ok) exportFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}export ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+const forExport = starterDoc("Ada Lovelace");
+forExport.design = {
+  ...forExport.design,
+  tokens: { ...forExport.design.tokens, motion: "rise" },
+  nav: { ...forExport.design.nav, variant: "hamburger-overlay", mobileBehavior: "hamburger", showThemeToggle: true },
+};
+const exported = exportDoc(forExport);
+expectExport("motion is off, so nothing waits for JavaScript to appear", exported.design.tokens.motion === "none");
+expectExport(
+  "no control that needs JavaScript",
+  !exported.design.nav.showThemeToggle && exported.design.nav.variant === "top-static" && exported.design.nav.mobileBehavior === "wrap",
+  JSON.stringify(exported.design.nav),
+);
+const scrolling = exportDoc({ ...forExport, design: { ...forExport.design, nav: { ...forExport.design.nav, mobileBehavior: "scroll" } } });
+expectExport("other mobile nav behaviours are kept", scrolling.design.nav.mobileBehavior === "scroll");
+expectExport("the file name is the handle, and only the handle", exportFileName('ada"; x') === "portfolio-adax.html", exportFileName('ada"; x'));
+
+const stripped = stripScripts(
+  '<head><link rel="preload" as="script" href="/_next/a.js"/><link rel="icon" href="/favicon.ico"/>' +
+    '<link rel="stylesheet" href="/_next/static/a.css" nonce="abc"/><script nonce="abc">self.__next_f.push(1)</script>' +
+    '<script src="/_next/static/b.js" async=""></script></head>',
+);
+expectExport(
+  "scripts, their preloads, icons and nonces are removed; stylesheets stay",
+  !/<script|preload|favicon|nonce/.test(stripped) && stripped.includes('rel="stylesheet"'),
+  stripped,
+);
+
+const requested: string[] = [];
+const files: Record<string, { body: string; type: string }> = {
+  "/_next/static/chunks/a.css": {
+    body: '@font-face{src:url("../media/f.woff2")}body{background:url(data:image/png;base64,AA==)}.x{content:"</style><script>"}',
+    type: "text/css; charset=utf-8",
+  },
+  "/_next/static/media/f.woff2": { body: "font", type: "font/woff2" },
+  "/assets/s1/a-1600.webp": { body: "image", type: "image/webp" },
+  "/assets/s1/v.mp4": { body: "video", type: "video/mp4" },
+  "/assets/s1/v-800.webp": { body: "poster", type: "image/webp" },
+};
+const fakeLoad = async (path: string) => {
+  requested.push(path);
+  const file = files[path];
+  return file ? { body: new TextEncoder().encode(file.body), type: file.type } : null;
+};
+const page =
+  '<html><head><link rel="stylesheet" href="/_next/static/chunks/a.css" data-precedence="x"/><script>alert(1)</script></head><body>' +
+  '<img src="/assets/s1/a-1600.webp" srcSet="/assets/s1/a-400.webp 400w, /assets/s1/a-1600.webp 1600w" alt=""/>' +
+  '<img src="/assets/s1/a-1600.webp" alt=""/>' +
+  '<video src="/assets/s1/v.mp4" poster="/assets/s1/v-800.webp"></video>' +
+  '<a href="https://ada.example">site</a><img src="https://elsewhere.example/x.png" alt=""/></body></html>';
+
+// Async, and this file runs as CommonJS: no top-level await, so the rest of the
+// run finishes inside this function.
+async function exportInlineCases() {
+  const result = await inlineExport(page, fakeLoad);
+  const out = result.ok ? result.html : "";
+  // The escaped `<\/style><script>` inside the CSS string is text, not an element.
+  expectExport("no script survives", result.ok && !/<script\b/i.test(out.replace(/<\\\/style><script>/, "")), out.slice(0, 200));
+  expectExport("the stylesheet is inlined", !out.includes('rel="stylesheet"') && out.includes("<style>@font-face"));
+  expectExport(
+    "fonts resolve against the stylesheet and are embedded",
+    requested.includes("/_next/static/media/f.woff2") && out.includes("data:font/woff2;base64,"),
+    requested.join(),
+  );
+  expectExport(
+    "a data: URI in the CSS is left alone and never fetched",
+    out.includes("url(data:image/png;base64,AA==)") && !requested.some((p) => p.startsWith("data:")),
+  );
+  expectExport("nothing in a stylesheet can end the <style> element", !out.includes('"</style><script>"'));
+  expectExport(
+    "images, videos and posters are embedded; srcset is dropped",
+    out.includes('src="data:image/webp;base64,') && out.includes('src="data:video/mp4;base64,') &&
+      out.includes('poster="data:image/webp;base64,') && !/srcset/i.test(out),
+  );
+  expectExport("each file is fetched once", requested.filter((p) => p === "/assets/s1/a-1600.webp").length === 1);
+  expectExport(
+    "other hosts are neither fetched nor changed",
+    !requested.some((p) => p.includes("elsewhere")) &&
+      out.includes('src="https://elsewhere.example/x.png"') && out.includes('href="https://ada.example"'),
+  );
+  const tooBig = await inlineExport(page, fakeLoad, 10);
+  expectExport("an export past the size cap is refused", !tooBig.ok);
+}
+
+void exportInlineCases().then(() => {
+  const exportCases = 14;
+  console.log(`\n${exportCases - exportFailures}/${exportCases} html export cases passed`);
+
+  process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + exportFailures ? 1 : 0);
+});
