@@ -166,6 +166,22 @@ for (const [path, expected] of matcher ? pathCases : []) {
 }
 
 console.log(`\n${pathCases.length - pathFailures}/${pathCases.length} proxy path cases passed`);
+
+// ------------------------------------------------------- deploy directories
+//
+// On the server the app root also holds releases/ and the `live` symlink, and
+// releases built before #94 carry a whole copy of src/. `next build`
+// type-checks whatever tsconfig matches, so an old copy of a page importing
+// something that has since changed failed the deploy of #95 — while CI, which
+// has no releases/, passed.
+const tsconfig = JSON.parse(readFileSync("tsconfig.json", "utf8")) as { exclude?: string[] };
+let tsconfigFailures = 0;
+for (const dir of ["releases", "live"]) {
+  const ok = tsconfig.exclude?.includes(dir) ?? false;
+  if (!ok) tsconfigFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}tsconfig excludes ${dir}${ok ? "" : "  (the build would type-check old releases on the server)"}`);
+}
+console.log(`\n${2 - tsconfigFailures}/2 tsconfig cases passed`);
 // ------------------------------------------------------- dynamic values
 //
 // A fixed clock, because the whole point of these is that they read one.
@@ -959,5 +975,5 @@ void exportInlineCases().then(() => {
   const exportCases = 18;
   console.log(`\n${exportCases - exportFailures}/${exportCases} html export cases passed`);
 
-  process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + windowFailures + adminFailures + exportFailures ? 1 : 0);
+  process.exit(failures + subFailures + pathFailures + tsconfigFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + windowFailures + adminFailures + exportFailures ? 1 : 0);
 });
