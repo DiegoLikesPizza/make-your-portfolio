@@ -53,6 +53,11 @@ if ! git merge-base --is-ancestor "$TARGET" origin/main; then
   exit 2
 fi
 
+# npm rewrites package-lock.json on every install here (see below), and that
+# rewrite isn't an edit made on the box. Left in place, it would stop the
+# fast-forward of any commit that changes the lockfile.
+git checkout --quiet -- package-lock.json
+
 # Fast-forward only. Anything edited in place on the box stops the deploy
 # instead of being silently overwritten.
 git merge --ff-only --quiet "$TARGET"
@@ -62,6 +67,10 @@ echo "redeploy: at $(git log --oneline -1)"
 # that look optional and are not (npm install rather than ci, prisma generate).
 # The site keeps serving throughout: it runs from releases/, not from .next.
 npm install --no-audit --no-fund
+# The committed lockfile is generated on Windows and lacks Linux-only optional
+# packages, so `npm ci` fails and install adds them to the file. Put it back, so
+# the working tree stays as committed between deploys.
+git checkout --quiet -- package-lock.json
 npx prisma generate
 npx prisma migrate deploy
 npm run build

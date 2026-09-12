@@ -187,7 +187,10 @@ until the client is regenerated.
 **Two production gotchas, both already handled — do not undo them:**
 
 - `npm ci` fails on the server. The committed lockfile is generated on Windows and omits
-  Linux-only optional packages (`@emnapi/*`), so `npm install` is used there instead.
+  Linux-only optional packages (`@emnapi/*`), so `npm install` is used there instead. That
+  rewrites `package-lock.json`, so `redeploy.sh` puts the committed file back before
+  fast-forwarding and after installing; otherwise the next deploy that changes the lockfile would
+  refuse to run. Any other file edited on the box still stops a deploy.
 - **The standalone server does not read the project `.env`.** It resolves env files relative to
   `server.js` (`.next/standalone/`), not the project root. pm2 therefore runs `start.sh`, which
   sources `.env` and execs the server. Without it Auth.js never sees `AUTH_URL`, falls back to the

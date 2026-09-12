@@ -6,6 +6,8 @@
 #   - a deploy creates a release and points `live` at it
 #   - only the newest releases are kept
 #   - a release that fails its health check is rolled back, and the deploy fails
+#   - npm rewriting package-lock.json never stops the next deploy, but a file
+#     edited on the box does
 #   - a ref that isn't a full commit id is refused
 #
 #   bash deploy/test-redeploy.sh
@@ -27,7 +29,11 @@ check() {
 mkdir -p "$work/bin"
 cat > "$work/bin/npm" <<'STUB'
 #!/usr/bin/env bash
-# `npm run build` produces a "server" that records which commit it was built from.
+# `npm install` rewrites the lockfile, as it does on the box. `npm run build`
+# produces a "server" that records which commit it was built from.
+if [[ "$1" == "install" ]]; then
+  echo "linux-only optional package" >> package-lock.json
+fi
 if [[ "$*" == "run build" ]]; then
   mkdir -p .next/standalone .next/static
   git rev-parse HEAD > .next/standalone/server.js
@@ -46,6 +52,7 @@ git -C "$work/dev" config user.name test
 mkdir -p "$work/dev/deploy" "$work/dev/public"
 cp "$here/start.sh" "$work/dev/deploy/start.sh"
 touch "$work/dev/public/robots.txt"
+echo '{"lockfileVersion": 3}' > "$work/dev/package-lock.json"
 
 commit() {
   echo "$1" > "$work/dev/version.txt"
@@ -80,6 +87,21 @@ for version in two three four; do
 done
 check "live follows main" test "$(live_commit)" = "$(origin_main)"
 check "the newest 3 releases are kept" test "$(releases)" -eq 3
+
+# --- npm's lockfile rewrite doesn't block a deploy that changes the lockfile ---
+echo '{"lockfileVersion": 3, "changed": true}' > "$work/dev/package-lock.json"
+commit five
+deploy || true
+check "a deploy that changes the lockfile still goes out" test "$(live_commit)" = "$(origin_main)"
+check "the lockfile is left as committed" git -C "$work/app" diff --quiet -- package-lock.json
+
+# --- a file edited on the box still stops a deploy ---------------------------
+echo "edited on the box" >> "$work/app/version.txt"
+commit six
+if deploy; then status=0; else status=$?; fi
+check "a file edited on the box stops the deploy" test "$status" -ne 0
+check "and nothing new goes live" test "$(live_commit)" != "$(origin_main)"
+git -C "$work/app" checkout --quiet -- version.txt
 
 # --- a release that fails its health check -----------------------------------
 good="$(live_commit)"
