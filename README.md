@@ -196,6 +196,10 @@ until the client is regenerated.
   sources `.env` and execs the server. Without it Auth.js never sees `AUTH_URL`, falls back to the
   server's own bind address, and every magic link points at `https://localhost:3004`.
   `AUTH_URL` is mandatory in production for the same reason.
+- **Secrets live only in the app root's `.env`, which should be mode 600.** `next build` copies
+  `.env` into `.next/standalone`, so `redeploy.sh` removes env files from every release and makes
+  releases unreadable to other users. It also builds with a umask that keeps what it creates
+  private.
 
 The `caddy/` directory and `deploy/*.service` are kept for a clean-server install, but are **not**
 what runs in production.

@@ -41,7 +41,17 @@ jobs:
       - run: npm run lint
       - run: npx tsc --noEmit
       - run: npm test
-      - run: npm run build
+      # Fails on Turbopack's whole-project tracing warning, not just on errors: a
+      # file path it can't scope pulls the entire repository into the standalone
+      # output that deploys ship (#93).
+      - name: Build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+          if grep -q "Dynamic filesystem access causes tracing of the whole project" build.log; then
+            echo "::error::The build traces the whole project into its output. Scope the file path it names (see src/lib/storage.ts)."
+            exit 1
+          fi
 
       # Needs Linux (symlinks, flock), which is why it runs here and not locally.
       - name: Deploy script

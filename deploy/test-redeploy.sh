@@ -8,6 +8,8 @@
 #   - a release that fails its health check is rolled back, and the deploy fails
 #   - npm rewriting package-lock.json never stops the next deploy, but a file
 #     edited on the box does
+#   - no release carries an env file or is readable by other users, including
+#     releases left from before
 #   - a ref that isn't a full commit id is refused
 #
 #   bash deploy/test-redeploy.sh
@@ -37,6 +39,8 @@ fi
 if [[ "$*" == "run build" ]]; then
   mkdir -p .next/standalone .next/static
   git rev-parse HEAD > .next/standalone/server.js
+  # next build copies .env into the standalone output; here it's world-readable too.
+  (umask 022 && echo "AUTH_SECRET=not-for-releases" > .next/standalone/.env)
 fi
 STUB
 printf '#!/usr/bin/env bash\n' > "$work/bin/npx"
@@ -63,6 +67,9 @@ commit() {
 
 commit one
 git clone -q "$work/origin.git" "$work/app" 2>/dev/null
+# A release left by an earlier deploy, before env files were kept out.
+old_release="$work/app/releases/19700101T000000000000000-old"
+(umask 022 && mkdir -p "$old_release" && echo "AUTH_SECRET=old" > "$old_release/.env" && echo "AUTH_SECRET=backup" > "$old_release/.env.backup")
 
 deploy() {
   PATH="$work/bin:$PATH" APP_DIR="$work/app" LOCK_FILE="$work/deploy.lock" \
@@ -79,6 +86,10 @@ check "the live release is the commit on main" test "$(live_commit)" = "$(origin
 check "the release carries the static files" test -f "$work/app/live/public/robots.txt"
 check "start.sh is installed at the app root" test -x "$work/app/start.sh"
 check "pm2 was restarted" grep -q "restart" "$work/pm2.log"
+check "the new release carries no env file" test ! -e "$work/app/live/.env"
+check "an older release's env files are removed" test -z "$(find "$old_release" -name '.env*' -print -quit)"
+check "no release is readable by other users" \
+  test -z "$(find "$work/app/releases" \( -type f -o -type d \) -perm -o=r -print -quit)"
 
 # --- more deploys: only the newest releases stay ------------------------------
 for version in two three four; do

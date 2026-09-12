@@ -18,8 +18,20 @@ const run = promisify(execFile);
 /**
  * Where uploads live. Caddy serves this directory at /assets without touching
  * Node; under nginx, src/app/assets/[...path] serves it.
+ *
+ * Only known at runtime, which the build's file tracing can't scope: without the
+ * turbopackIgnore marks it traced the whole project into the standalone output —
+ * source, docs, and any `.env.*` file lying in the app folder. Every upload path
+ * goes through `uploadPath` for that reason.
  */
-export const ASSETS_DIR = path.resolve(process.env.ASSETS_DIR || path.join(process.cwd(), "data", "assets"));
+export const ASSETS_DIR = path.resolve(
+  /* turbopackIgnore: true */ process.env.ASSETS_DIR || path.join(process.cwd(), "data", "assets"),
+);
+
+/** A path under ASSETS_DIR. */
+function uploadPath(...segments: string[]): string {
+  return path.join(/* turbopackIgnore: true */ ASSETS_DIR, ...segments);
+}
 
 /** A problem with the upload itself, worded for the person who uploaded it. */
 export class UploadError extends Error {}
@@ -70,7 +82,7 @@ export async function processUpload(siteId: string, assetId: string, input: Buff
 
   const animated = (meta.pages ?? 1) > 1;
   const widths = renditionWidths(width);
-  const dir = path.join(ASSETS_DIR, siteId);
+  const dir = uploadPath(siteId);
   await mkdir(dir, { recursive: true });
 
   try {
@@ -79,7 +91,7 @@ export async function processUpload(siteId: string, assetId: string, input: Buff
         .rotate()
         .resize({ width: w })
         .webp({ quality: 82 })
-        .toFile(path.join(dir, assetFiles.still(assetId, w)));
+        .toFile(uploadPath(siteId, assetFiles.still(assetId, w)));
     }
 
     let video = false;
@@ -87,8 +99,8 @@ export async function processUpload(siteId: string, assetId: string, input: Buff
       await sharp(input, { animated: true })
         .resize({ width: Math.min(width, 1200) })
         .webp({ quality: 75 })
-        .toFile(path.join(dir, assetFiles.animated(assetId)));
-      video = await gifToVideo(input, path.join(dir, assetFiles.video(assetId)));
+        .toFile(uploadPath(siteId, assetFiles.animated(assetId)));
+      video = await gifToVideo(input, uploadPath(siteId, assetFiles.video(assetId)));
     }
 
     const largest = widths[widths.length - 1];
@@ -151,18 +163,18 @@ async function sizeOnDisk(dir: string, assetId: string): Promise<number> {
 }
 
 export async function removeAssetFiles(siteId: string, assetId: string) {
-  const dir = path.join(ASSETS_DIR, siteId);
-  await Promise.all((await filesOf(dir, assetId)).map((file) => rm(path.join(dir, file), { force: true })));
+  const files = await filesOf(uploadPath(siteId), assetId);
+  await Promise.all(files.map((file) => rm(uploadPath(siteId, file), { force: true })));
 }
 
 /** Everything a site uploaded, for when the site itself is deleted. */
 export async function removeSiteAssets(siteId: string) {
-  await rm(path.join(ASSETS_DIR, siteId), { recursive: true, force: true });
+  await rm(uploadPath(siteId), { recursive: true, force: true });
 }
 
 /** A file's location; only call with segments that passed `isSafeAssetPath`. */
 export function assetFilePath(siteId: string, file: string): string {
-  return path.join(ASSETS_DIR, siteId, file);
+  return uploadPath(siteId, file);
 }
 
 export function contentTypeFor(file: string): string {
