@@ -19,6 +19,10 @@
 # deploy/test-redeploy.sh exercises all of this in CI.
 set -euo pipefail
 
+# Everything a deploy creates, releases included, is private to the app's user:
+# nginx only proxies to the app, so nobody else on the box needs to read it.
+umask 027
+
 APP_DIR="${APP_DIR:-/srv/websites/make-your-portfolio.lfdiego.xyz/app}"
 PM2_APP="${PM2_APP:-make-your-portfolio}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3004/signin}"
@@ -82,6 +86,12 @@ mkdir -p "$release/.next"
 cp -R .next/standalone/. "$release/"
 cp -R public "$release/public"
 cp -R .next/static "$release/.next/static"
+
+# next build copies .env into the standalone output, and start.sh loads the app
+# root's .env anyway, so a release never needs a copy of the secrets. Releases
+# from before this check are cleaned up and closed off too.
+rm -f releases/*/.env releases/*/.env.*
+chmod -R go-rwx releases
 
 # pm2 runs the app root's copy of start.sh; keep it in step with the repo's.
 install -m 755 deploy/start.sh start.sh
