@@ -2,43 +2,23 @@ import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getCurrentUser, requireSiteOwner } from "@/lib/auth";
+import { describeChange, fillDays, parseRange, windowStart } from "@/lib/analytics";
 import { Card, DashboardShell } from "@/components/dashboard/Shell";
-import { ViewsChart, type DayCount } from "@/components/dashboard/ViewsChart";
+import { CountTable } from "@/components/dashboard/CountTable";
+import { RangePicker } from "@/components/dashboard/RangePicker";
+import { Stat } from "@/components/dashboard/Stat";
+import { ViewsChart } from "@/components/dashboard/ViewsChart";
 
 export const metadata = { title: "Analytics" };
 
-const WINDOW_DAYS = 30;
+type Props = {
+  params: Promise<{ siteId: string }>;
+  searchParams: Promise<{ days?: string | string[] }>;
+};
 
-/** `YYYY-MM-DD` for a Date, read in UTC — the same bucket the rows are keyed by. */
-function isoDay(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-/**
- * Every day in the window, including the ones with no row.
- *
- * Charting only the days that have data is the classic way to draw a flat line
- * through a fortnight of silence: the gaps *are* the information.
- */
-function fillDays(rows: { day: Date; count: number }[]): DayCount[] {
-  const totals = new Map<string, number>();
-  for (const row of rows) {
-    const key = isoDay(row.day);
-    totals.set(key, (totals.get(key) ?? 0) + row.count);
-  }
-
-  const today = new Date();
-  const days: DayCount[] = [];
-  for (let back = WINDOW_DAYS - 1; back >= 0; back -= 1) {
-    const date = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - back));
-    const key = isoDay(date);
-    days.push({ day: key, count: totals.get(key) ?? 0 });
-  }
-  return days;
-}
-
-export default async function AnalyticsPage({ params }: { params: Promise<{ siteId: string }> }) {
+export default async function AnalyticsPage({ params, searchParams }: Props) {
   const { siteId } = await params;
+  const range = parseRange((await searchParams).days);
 
   const user = await getCurrentUser();
   if (!user) redirect("/signin");
@@ -46,15 +26,17 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ site
   const owned = await requireSiteOwner(siteId);
   if (!owned) notFound();
 
-  const since = new Date();
-  since.setUTCDate(since.getUTCDate() - (WINDOW_DAYS - 1));
-  since.setUTCHours(0, 0, 0, 0);
+  const now = new Date();
+  const since = windowStart(range, now);
+  // The window of the same length just before this one, for the comparison.
+  const before = windowStart(range * 2, now);
 
-  const [recent, allTime, sources] = await Promise.all([
+  const [recent, previous, allTime, sources] = await Promise.all([
     db.siteView.findMany({
       where: { siteId, day: { gte: since } },
       select: { day: true, count: true },
     }),
+    db.siteView.aggregate({ where: { siteId, day: { gte: before, lt: since } }, _sum: { count: true } }),
     db.siteView.aggregate({ where: { siteId }, _sum: { count: true } }),
     db.siteView.groupBy({
       by: ["source"],
@@ -65,11 +47,13 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ site
     }),
   ]);
 
-  const days = fillDays(recent);
+  const days = fillDays(recent, range, now);
   const windowTotal = days.reduce((sum, d) => sum + d.count, 0);
 
   return (
     <DashboardShell siteId={siteId} current="analytics" title="Analytics">
+      <RangePicker basePath={`/dashboard/${siteId}/analytics`} current={range} />
+
       {!owned.site.publishedAt && (
         <p className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">
           This site isn&apos;t published, so nothing is being counted yet.{" "}
@@ -80,36 +64,28 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ site
         </p>
       )}
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-2">
-        <Stat label={`Views, last ${WINDOW_DAYS} days`} value={windowTotal} />
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <Stat
+          label={`Views, last ${range} days`}
+          value={windowTotal}
+          detail={describeChange(windowTotal, previous._sum.count ?? 0, range)}
+        />
         <Stat label="Views, all time" value={allTime._sum.count ?? 0} />
       </div>
 
-      <Card title={`Daily views · last ${WINDOW_DAYS} days`}>
+      <Card title={`Daily views · last ${range} days`}>
         <ViewsChart days={days} />
       </Card>
 
-      <Card title={`Where they came from · last ${WINDOW_DAYS} days`}>
-        {sources.length === 0 ? (
-          <p className="mt-2 text-sm text-neutral-500 dark:text-neutral-400">Nothing yet.</p>
-        ) : (
-          <table className="mt-3 w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-[0.08em] text-neutral-500">
-                <th className="pb-2 font-medium">Source</th>
-                <th className="pb-2 text-right font-medium">Views</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sources.map((s) => (
-                <tr key={s.source || "direct"} className="border-t border-neutral-200 dark:border-neutral-800">
-                  <td className="py-2 font-mono">{s.source || "direct"}</td>
-                  <td className="py-2 text-right tabular-nums">{s._sum.count ?? 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+      <Card title={`Where they came from · last ${range} days`}>
+        <CountTable
+          label="Source"
+          rows={sources.map((s) => ({
+            key: `source:${s.source}`,
+            label: s.source || "direct",
+            count: s._sum.count ?? 0,
+          }))}
+        />
       </Card>
 
       <p className="mt-8 text-xs text-neutral-500 dark:text-neutral-400">
@@ -118,20 +94,5 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ site
         here, and why the page needs no consent banner.
       </p>
     </DashboardShell>
-  );
-}
-
-/**
- * A single number, big.
- *
- * A two-point trend is a stat, not a chart — drawing it as one would imply a
- * shape that two numbers cannot have.
- */
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800">
-      <span className="text-xs font-medium uppercase tracking-[0.08em] text-neutral-500">{label}</span>
-      <p className="mt-2 text-3xl font-semibold tabular-nums tracking-tight">{value.toLocaleString()}</p>
-    </div>
   );
 }

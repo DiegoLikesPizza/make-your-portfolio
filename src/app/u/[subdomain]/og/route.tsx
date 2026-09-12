@@ -1,4 +1,5 @@
 import { getPublishedSiteByHandle } from "@/lib/sites";
+import { referenceDemoDoc } from "@/lib/reference-demo";
 import { resolveDynamic } from "@/lib/dynamic";
 import { shareCard } from "@/lib/share-card";
 
@@ -11,7 +12,7 @@ import { shareCard } from "@/lib/share-card";
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ subdomain: string }> }) {
   const { subdomain } = await params;
-  const site = await getPublishedSiteByHandle(subdomain);
-  if (!site) return new Response(null, { status: 404 });
-  return shareCard(resolveDynamic(site.doc));
+  const doc = (await getPublishedSiteByHandle(subdomain))?.doc ?? (await referenceDemoDoc(subdomain));
+  if (!doc) return new Response(null, { status: 404 });
+  return shareCard(resolveDynamic(doc));
 }

@@ -55,6 +55,22 @@ nobody claims to own. Each preset gets its own hero and its own layout per
 section, so the six read as six different sites rather than one site in six
 colours.
 
+### `/u/demo`
+
+The reference document — lfdiego.xyz's content — as a finished page. In
+development it is the seeded `demo` site, as last published. Where no site holds
+the handle, which is every deployment,
+[`src/lib/reference-demo.ts`](../src/lib/reference-demo.ts) renders the fixture
+instead: `noindex`, never counted, and `demo` is a reserved handle so nobody can
+take the address.
+
+### The admin page
+
+Put the address you sign in with in `ADMIN_EMAILS` and open `/admin`. The account
+has to have signed in **by email link** at least once, which is what proves the
+address (see [dashboard.md](dashboard.md#admin--admin)). The seeded
+`dev@example.localhost` never has, so it isn't an admin until it does.
+
 ## The checks
 
 | | |
