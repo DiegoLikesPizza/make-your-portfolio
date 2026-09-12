@@ -12,7 +12,7 @@ your head. Everything else can be read out of order.
 |---|---|
 | [architecture.md](architecture.md) | The three layers, the one document, how a request becomes a page, what is cached and when it is dropped |
 | [editor.md](editor.md) | The editing surface: sections, layouts, layout settings, inline emphasis, autosave and publish |
-| [dashboard.md](dashboard.md) | Account, Analytics, Settings, and "Write it for me" |
+| [dashboard.md](dashboard.md) | Account, Analytics, Settings, "Write it for me", and the admin page |
 | [hosting.md](hosting.md) | Handles, custom domains, DNS verification, Caddy and on-demand TLS |
 | [development.md](development.md) | Running it locally, the checks, and the traps that cost an afternoon |
 | [extending.md](extending.md) | Adding a section layout, a preset, a layout setting, a nav variant |

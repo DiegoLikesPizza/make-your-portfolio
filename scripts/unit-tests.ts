@@ -5,7 +5,8 @@ import { resolveText, resolveDynamic } from "../src/lib/dynamic";
 import { hasOwnershipToken, ownershipRecord } from "../src/lib/dns";
 import { isStaleClaim } from "../src/lib/domain-claims";
 import { clientIp, describeWait, rateLimit } from "../src/lib/rate-limit";
-import { normalizeSource } from "../src/lib/analytics";
+import { describeChange, fillDays, normalizeSource, parseRange, windowStart } from "../src/lib/analytics";
+import { isAdmin, isAdminEmail } from "../src/lib/admin";
 import { isSafeHref } from "../src/lib/schema/sections";
 import { migrate, portfolioDoc } from "../src/lib/schema/portfolio";
 import { starterDoc } from "../src/lib/fixtures/starter";
@@ -94,6 +95,8 @@ const subCases: [string, string | null][] = [
   // again — nothing in the product depends on owning them.
   ["editorial", null],
   ["brutalist", null],
+  // …but not `demo`: /u/demo shows the reference portfolio.
+  ["demo", "reserved"],
   ["a".repeat(64), "too-long"],
 ];
 
@@ -743,6 +746,88 @@ expectGithub(
 const githubCases = 13;
 console.log(`\n${githubCases - githubFailures}/${githubCases} github import cases passed`);
 
+// ------------------------------------------------------- analytics windows
+//
+// The same fixed clock as the dynamic values: 2026-09-10, 14:32 UTC.
+let windowFailures = 0;
+const expectWindow = (label: string, ok: boolean, detail = "") => {
+  if (!ok) windowFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}window ${label}${ok ? "" : `  ${detail}`}`);
+};
+
+expectWindow("?days= picks a range that is offered", parseRange("7") === 7 && parseRange("90") === 90);
+expectWindow(
+  "anything else is 30 days",
+  parseRange(undefined) === 30 && parseRange("365") === 30 && parseRange(["7", "90"]) === 30 && parseRange("7abc") === 30,
+);
+const start30 = windowStart(30, NOW).toISOString();
+expectWindow("a 30-day window starts 29 days back, at UTC midnight", start30 === "2026-08-12T00:00:00.000Z", start30);
+
+const filled = fillDays(
+  [
+    { day: new Date("2026-09-10T00:00:00Z"), count: 2 },
+    // Two rows on one day — two sources, or two signups — are one bar.
+    { day: new Date("2026-09-08T00:00:00Z"), count: 3 },
+    { day: new Date("2026-09-08T17:45:00Z"), count: 1 },
+    // Before the window, so not drawn.
+    { day: new Date("2026-09-01T00:00:00Z"), count: 9 },
+  ],
+  7,
+  NOW,
+);
+expectWindow(
+  "every day in the window, oldest first, ending today",
+  filled.length === 7 && filled[0].day === "2026-09-04" && filled[6].day === "2026-09-10",
+  filled.map((d) => d.day).join(),
+);
+expectWindow("a day with no rows is zero, not missing", filled[0].count === 0 && filled[5].count === 0);
+expectWindow("rows on the same day add up", filled[4].count === 4 && filled[6].count === 2, JSON.stringify(filled));
+
+const changeCases: [number, number, string | undefined][] = [
+  [12, 10, "↑ 20% vs the previous 30 days"],
+  [5, 10, "↓ 50% vs the previous 30 days"],
+  [10, 10, "Same as the previous 30 days"],
+  // No percentage from zero: any rise from nothing is infinite.
+  [4, 0, "None in the previous 30 days"],
+  [0, 0, undefined],
+];
+for (const [current, previous, expected] of changeCases) {
+  const actual = describeChange(current, previous, 30);
+  expectWindow(`change ${previous} -> ${current}`, actual === expected, `(got ${actual})`);
+}
+
+const windowCases = 6 + changeCases.length;
+console.log(`\n${windowCases - windowFailures}/${windowCases} analytics window cases passed`);
+
+// ------------------------------------------------------- admin
+//
+// The list is passed in, so whatever ADMIN_EMAILS this runs with can't decide
+// the answers.
+let adminFailures = 0;
+const expectAdmin = (label: string, ok: boolean) => {
+  if (!ok) adminFailures += 1;
+  console.log(`${ok ? "PASS " : "FAIL "}admin ${label}`);
+};
+
+const ADMINS = " Ada@Example.com, grace@example.com\n";
+const provenAt = new Date("2026-09-01T00:00:00Z");
+expectAdmin(
+  "an address on the list, whatever its case and spacing",
+  isAdminEmail("ada@example.com", ADMINS) && isAdminEmail(" GRACE@example.com", ADMINS),
+);
+expectAdmin("an address that isn't on it", !isAdminEmail("mallory@example.com", ADMINS));
+expectAdmin("no list means no admins", !isAdminEmail("ada@example.com", "") && !isAdminEmail("", ""));
+expectAdmin(
+  "part of an address is not the address",
+  !isAdminEmail("example.com", ADMINS) && !isAdminEmail("ada@example.co", ADMINS),
+);
+expectAdmin("a listed address proven by an email link is an admin", isAdmin({ email: "ada@example.com", emailVerified: provenAt }, ADMINS));
+expectAdmin("a listed address nobody has proven is not", !isAdmin({ email: "ada@example.com", emailVerified: null }, ADMINS));
+expectAdmin("a proven address off the list is not", !isAdmin({ email: "mallory@example.com", emailVerified: provenAt }, ADMINS));
+
+const adminCases = 7;
+console.log(`\n${adminCases - adminFailures}/${adminCases} admin cases passed`);
+
 // ------------------------------------------------------- html export
 let exportFailures = 0;
 const expectExport = (label: string, ok: boolean, detail = "") => {
@@ -874,5 +959,5 @@ void exportInlineCases().then(() => {
   const exportCases = 18;
   console.log(`\n${exportCases - exportFailures}/${exportCases} html export cases passed`);
 
-  process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + exportFailures ? 1 : 0);
+  process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + windowFailures + adminFailures + exportFailures ? 1 : 0);
 });

@@ -20,8 +20,9 @@ a second bar would cost preview height for no gain.
 
 ## Analytics — `/dashboard/<siteId>/analytics`
 
-Daily views for the last 30 days, the all-time total, and where the traffic came
-from.
+Daily views over the last 7, 30 or 90 days (`?days=`, 30 by default), how that
+window compares with the one before it, the all-time total, and where the traffic
+came from.
 
 **Counted in the browser.** The public routes are cached — most requests never
 reach application code — so a server-side counter would only ever see cache
@@ -55,6 +56,33 @@ The chart is one bar per day, including days with none: charting only the days
 that have data is how a fortnight of silence becomes a flat line through
 nothing. Zero days render as a dim 2px baseline tick so they can still be
 hovered.
+
+## Admin — `/admin`
+
+The whole instance on one page, for whoever runs it: accounts and signups,
+published sites, views across every site with the same 7/30/90-day windows,
+the busiest sites and referrers, publishes, contact messages, custom domains,
+uploads, and the newest accounts. Read-only — nothing on it changes anybody's
+data. It has its own header rather than the dashboard frame, whose tabs are all
+about one site.
+
+**Who gets in** ([`src/lib/admin.ts`](../src/lib/admin.ts)): the addresses in
+`ADMIN_EMAILS`, comma-separated. There is no role column and no screen that
+grants it, so becoming an admin means editing the server's environment. Unset,
+nobody is an admin. Signed out, `/admin` sends you to sign in; signed in as
+anyone else, it is a 404, the same as a page that doesn't exist.
+
+**The address has to be proven.** An account counts once it has signed in with
+an email link at least once, because that is the only thing that sets
+`emailVerified`. Auth.js's GitHub provider takes an account's primary address
+without checking that GitHub verified it, so matching the address alone would
+let someone sign up through GitHub with the admin's address before the admin had
+an account. A listed address that hasn't been proven gets a page saying what to
+do instead of the 404.
+
+**"Views" means the same counter as each site's Analytics**: published
+portfolios at `/u/<handle>` and on custom domains. The homepage, `/layouts`, the
+demos and the dashboard aren't counted anywhere.
 
 ## Messages — `/dashboard/<siteId>/messages`
 

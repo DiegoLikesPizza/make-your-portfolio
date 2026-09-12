@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { formatDay } from "@/lib/dates";
+import type { DayCount } from "@/lib/analytics";
 
 /**
- * Daily views for the last N days.
+ * A count per day for the last N days — views, or signups on the admin page.
  *
  * A bar per day rather than a line: the days are discrete buckets and a new
  * site's data is mostly zeros, where a line would draw slopes between points
@@ -13,21 +14,25 @@ import { formatDay } from "@/lib/dates";
  * message and the exact number is in the tooltip.
  */
 
-export type DayCount = { day: string; count: number };
-
-export function ViewsChart({ days }: { days: DayCount[] }) {
+export function ViewsChart({
+  days,
+  unit = ["view", "views"],
+  empty = "No views recorded yet. Numbers start the first time somebody who isn't you opens the published page.",
+}: {
+  days: DayCount[];
+  /** Singular and plural, for the hover label. */
+  unit?: [one: string, many: string];
+  /** Said instead of drawing a row of zeros. */
+  empty?: string;
+}) {
   const [hover, setHover] = useState<number | null>(null);
 
   const max = Math.max(1, ...days.map((d) => d.count));
   const total = days.reduce((sum, d) => sum + d.count, 0);
+  const noun = (count: number) => (count === 1 ? unit[0] : unit[1]);
 
   if (total === 0) {
-    return (
-      <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">
-        No views recorded yet. Numbers start the first time somebody who isn&apos;t you opens the
-        published page.
-      </p>
-    );
+    return <p className="mt-4 text-sm text-neutral-500 dark:text-neutral-400">{empty}</p>;
   }
 
   const active = hover === null ? null : days[hover];
@@ -45,7 +50,7 @@ export function ViewsChart({ days }: { days: DayCount[] }) {
         <div className="flex h-8 items-end justify-between text-xs text-neutral-500 dark:text-neutral-400">
           <span aria-hidden>{max} max</span>
           <span className="tabular-nums" aria-live="polite">
-            {active ? `${formatDay(active.day)} · ${active.count} ${active.count === 1 ? "view" : "views"}` : ""}
+            {active ? `${formatDay(active.day)} · ${active.count} ${noun(active.count)}` : ""}
           </span>
         </div>
 
@@ -60,7 +65,7 @@ export function ViewsChart({ days }: { days: DayCount[] }) {
               onBlur={() => setHover(null)}
               tabIndex={0}
               role="img"
-              aria-label={`${formatDay(d.day)}: ${d.count} views`}
+              aria-label={`${formatDay(d.day)}: ${d.count} ${noun(d.count)}`}
               className="flex h-full flex-1 cursor-default items-end rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-neutral-400"
             >
               <div

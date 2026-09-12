@@ -16,6 +16,8 @@ const RESERVED = new Set([
   "dashboard", "settings", "profile", "user", "users", "me", "my", "new",
   "test", "testing", "dev", "staging", "preview", "sandbox", "beta",
   "portfolio", "site", "sites", "page", "pages", "host", "hosting",
+  // /u/demo shows the reference portfolio (src/lib/reference-demo.ts).
+  "demo",
 ]);
 
 export type SubdomainError = "too-short" | "too-long" | "invalid" | "reserved";

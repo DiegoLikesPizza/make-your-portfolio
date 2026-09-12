@@ -33,7 +33,7 @@ data**, so switching Projects from `numbered-list` to `grid-3` to `table` never 
 | 6. Presets | **done** — 6 |
 | 7. Uploads | **done** — images and GIFs, resized to WebP (GIFs to MP4 where ffmpeg exists); see [docs/uploads.md](docs/uploads.md) |
 | 8. Custom domains | **done** — add, verify, on-demand TLS gate |
-| 9. Dashboard | **done** — account, analytics, settings; domains folded into settings |
+| 9. Dashboard | **done** — account, analytics, settings; domains folded into settings; `/admin` for the whole instance |
 | 10. Write it for me | **done, unexercised** — needs `ANTHROPIC_API_KEY`; the live call has never run |
 
 ### Signing in
@@ -79,7 +79,8 @@ npm run contrast      # marketing pages paint their own background in both schem
 - `/layouts` — the public catalog browser
 - `/dashboard/<siteId>/edit` — the editor
 - `/dashboard/<siteId>/analytics` · `/settings` · `/dashboard/account`
-- `/u/demo` — the published portfolio, path-addressed
+- `/admin` — accounts, sites and traffic across the instance, for the addresses in `ADMIN_EMAILS`
+- `/u/demo` — the published portfolio, path-addressed (the reference document wherever no site holds `demo`)
 - `curl -H 'Host: demo.example.localhost' localhost:3100` — the same site, host-addressed
 
 Reaching the dev server from a phone on the same network works — visit `http://<your-lan-ip>:3100`.
@@ -234,6 +235,7 @@ src/
   app/site/[host]/         the public renderer (one route serves every site)
   app/u/[subdomain]/       path-addressed alias
   app/dashboard/           editor · analytics · settings · account · assist
+  app/admin/               the instance-wide admin page
   app/actions/             server actions: domains, site, account, assist
   lib/schema/              portfolio.ts · sections.ts · tokens.ts · background.ts
   lib/assist/              "write it for me": the brief schema and the Claude call
