@@ -70,6 +70,24 @@ export default async function SettingsPage({ params }: { params: Promise<{ siteI
       </Card>
 
       <Card
+        title="Download as HTML"
+        hint="The published page as one file, with its styles, fonts, images and videos inside, that opens offline and can be hosted anywhere. It has no scripts: no animations, theme toggle or view counting, and the contact form opens the visitor's email app."
+      >
+        {owned.site.publishedAt ? (
+          <a
+            href={`/api/sites/${siteId}/export`}
+            className="mt-3 inline-block rounded-lg bg-neutral-900 px-5 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900"
+          >
+            Download portfolio-{owned.site.subdomain}.html
+          </a>
+        ) : (
+          <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">
+            Publish the site first. The export is the live page.
+          </p>
+        )}
+      </Card>
+
+      <Card
         id="domains"
         title="Your own domain"
         hint="Point a domain you own at this site. HTTPS is issued automatically once the DNS record verifies."

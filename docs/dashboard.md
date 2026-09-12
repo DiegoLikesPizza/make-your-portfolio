@@ -115,6 +115,16 @@ the custom hostname were each edited somewhere different.
   32 random bytes and is the only access control, so the page is never indexed
   and never counted in analytics. *New link* replaces it (the old one stops
   working) and *Revoke* turns it off.
+- **Download as HTML** — the published page as one self-contained file:
+  styles, fonts, images and videos are embedded as data URIs, so it opens
+  offline and can be hosted anywhere. `GET /api/sites/<siteId>/export` fetches
+  the owner-only `/export/<siteId>` page from the app itself, forwarding the
+  owner's cookie, and inlines everything it references
+  ([`src/lib/export.ts`](../src/lib/export.ts)). The page renders with motion
+  off (content would otherwise wait for JavaScript to fade in), no theme toggle,
+  and a mobile nav that wraps instead of needing a menu button, because every
+  script is removed. The contact form falls back to a plain `mailto:` form.
+  Limited to 100 MB of embedded files.
 - **Your own domain** — see [hosting.md](hosting.md).
 - **Delete site** — cascades to domains, assets, views and messages; the account stays.
   Gated on typing the handle.
