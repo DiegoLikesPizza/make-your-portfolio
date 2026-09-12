@@ -89,6 +89,42 @@ function rewriteCss(css: string, base: string, uri: (path: string) => string | u
   });
 }
 
+/** A next/font variable: `--font-inter: "Inter", "Inter Fallback"` — only quoted family names. */
+const FONT_VARIABLE = /--font-([a-z0-9-]+)\s*:\s*((?:"[^"]*"|'[^']*')(?:\s*,\s*(?:"[^"]*"|'[^']*'))*)/gi;
+const FONT_REFERENCE = /var\(\s*--font-([a-z0-9-]+)/gi;
+
+/**
+ * The font families a page actually uses, lower-cased.
+ *
+ * The root layout declares a variable for every family the app offers, and
+ * next/font an @font-face for each; a portfolio's theme references two or
+ * three of those variables. Null when the sources declare no such variables,
+ * meaning there is nothing to tell used from unused and nothing may be pruned.
+ */
+export function usedFontFamilies(sources: string[]): Set<string> | null {
+  const text = sources.join("\n");
+  const declared = new Map<string, string[]>();
+  for (const [, name, value] of text.matchAll(FONT_VARIABLE)) {
+    declared.set(name.toLowerCase(), [...value.matchAll(/"([^"]*)"|'([^']*)'/g)].map((m) => (m[1] ?? m[2]).trim().toLowerCase()));
+  }
+  if (declared.size === 0) return null;
+
+  const used = new Set<string>();
+  for (const [, name] of text.matchAll(FONT_REFERENCE)) {
+    for (const family of declared.get(name.toLowerCase()) ?? []) used.add(family);
+  }
+  return used;
+}
+
+/** A stylesheet without the @font-face rules for families outside `families`. */
+export function pruneFontFaces(css: string, families: Set<string>): string {
+  return css.replace(/@font-face\s*\{[^}]*\}/gi, (face) => {
+    const family = /font-family\s*:\s*([^;}]+)/i.exec(face)?.[1].trim().replace(/^["']|["']$/g, "").toLowerCase();
+    // A rule that names no family can't be judged; keep it.
+    return !family || families.has(family) ? face : "";
+  });
+}
+
 const MEDIA_ATTR = /(\s(?:src|poster)\s*=\s*)(?:"([^"]*)"|'([^']*)')/gi;
 
 export type LoadedFile = { body: Uint8Array; type: string };
@@ -135,11 +171,18 @@ export async function inlineExport(html: string, load: FileLoader, maxBytes = MA
       .map((tag) => ({ tag, path: localPath(attr(tag, "href") ?? "") }));
     await loadAll(sheets.flatMap((s) => s.path ?? []));
 
-    const styles = new Map<string, string>();
+    const sheetCss = new Map<string, string>();
     for (const { path } of sheets) {
       const file = path ? files.get(path) : null;
-      if (!path || !file) continue;
-      const css = new TextDecoder().decode(file.body);
+      if (path && file) sheetCss.set(path, new TextDecoder().decode(file.body));
+    }
+    // Narrowed to the families the page uses before anything is fetched, so the
+    // app's other fonts never reach the file.
+    const families = usedFontFamilies([out, ...sheetCss.values()]);
+
+    const styles = new Map<string, string>();
+    for (const [path, raw] of sheetCss) {
+      const css = families ? pruneFontFaces(raw, families) : raw;
       await loadAll(cssPaths(css, path));
       // Escaped so nothing inside the stylesheet can end the <style> element.
       styles.set(path, rewriteCss(css, path, uri).replace(/<\/style/gi, "<\\/style"));
