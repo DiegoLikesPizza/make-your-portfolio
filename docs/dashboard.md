@@ -124,7 +124,8 @@ the custom hostname were each edited somewhere different.
   off (content would otherwise wait for JavaScript to fade in), no theme toggle,
   and a mobile nav that wraps instead of needing a menu button, because every
   script is removed. The contact form falls back to a plain `mailto:` form.
-  Limited to 100 MB of embedded files.
+  Only the font families the page uses are embedded (the root layout declares
+  every family the app offers), and embedded files are limited to 100 MB.
 - **Your own domain** — see [hosting.md](hosting.md).
 - **Delete site** — cascades to domains, assets, views and messages; the account stays.
   Gated on typing the handle.

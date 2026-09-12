@@ -19,7 +19,7 @@ import { ASSET_LIMITS, documentsUseAsset, isSafeAssetPath, quotaProblem, renditi
 import { jsonForScript, personJsonLd, portfolioSitemapEntries } from "../src/lib/seo";
 import { CONTACT_LIMITS, parseContact } from "../src/lib/contact";
 import { normalizeUsername, pickRepos, repoToProject, toRepo, type GithubRepo } from "../src/lib/github";
-import { exportDoc, exportFileName, inlineExport, stripScripts } from "../src/lib/export";
+import { exportDoc, exportFileName, inlineExport, pruneFontFaces, stripScripts, usedFontFamilies } from "../src/lib/export";
 import type { PortfolioDoc } from "../src/lib/schema/portfolio";
 
 /**
@@ -767,6 +767,26 @@ const scrolling = exportDoc({ ...forExport, design: { ...forExport.design, nav: 
 expectExport("other mobile nav behaviours are kept", scrolling.design.nav.mobileBehavior === "scroll");
 expectExport("the file name is the handle, and only the handle", exportFileName('ada"; x') === "portfolio-adax.html", exportFileName('ada"; x'));
 
+const fontCss =
+  '.v1{--font-inter:"Inter", "Inter Fallback"}.v2{--font-playfair:"Playfair Display", "Playfair Display Fallback"}' +
+  '@font-face{font-family:Inter;src:url(../media/i.woff2)format("woff2")}' +
+  "@font-face{font-family:'Playfair Display';src:url(../media/p.woff2)}" +
+  "@font-face{font-family:Inter Fallback;src:local(Arial)}@font-face{font-family:Playfair Display Fallback;src:local(Times New Roman)}";
+const themeStyle = "<style>.portfolio{--font-heading:var(--font-inter), system-ui, sans-serif}</style>";
+const usedFamilies = usedFontFamilies([themeStyle, fontCss]);
+const prunedCss = usedFamilies ? pruneFontFaces(fontCss, usedFamilies) : fontCss;
+expectExport(
+  "only the font families the page uses are kept, with their fallbacks",
+  prunedCss.includes("i.woff2") && prunedCss.includes("font-family:Inter Fallback") &&
+    !prunedCss.includes("p.woff2") && !prunedCss.includes("font-family:Playfair Display Fallback"),
+  prunedCss,
+);
+expectExport("the font variables themselves stay declared", prunedCss.includes("--font-playfair"));
+expectExport(
+  "a stylesheet with no next/font variables is never pruned",
+  usedFontFamilies(["@font-face{font-family:X;src:url(x.woff2)}", "<style>.a{--font-heading:var(--font-x)}</style>"]) === null,
+);
+
 const stripped = stripScripts(
   '<head><link rel="preload" as="script" href="/_next/a.js"/><link rel="icon" href="/favicon.ico"/>' +
     '<link rel="stylesheet" href="/_next/static/a.css" nonce="abc"/><script nonce="abc">self.__next_f.push(1)</script>' +
@@ -832,10 +852,26 @@ async function exportInlineCases() {
   );
   const tooBig = await inlineExport(page, fakeLoad, 10);
   expectExport("an export past the size cap is refused", !tooBig.ok);
+
+  const fontRequests: string[] = [];
+  const fonted = await inlineExport(
+    `<head><link rel="stylesheet" href="/_next/static/chunks/f.css"/></head><body>${themeStyle}</body>`,
+    async (path) => {
+      fontRequests.push(path);
+      return path.endsWith(".css")
+        ? { body: new TextEncoder().encode(fontCss), type: "text/css" }
+        : { body: new Uint8Array([1]), type: "font/woff2" };
+    },
+  );
+  expectExport(
+    "an unused font is never fetched",
+    fonted.ok && fontRequests.includes("/_next/static/media/i.woff2") && !fontRequests.includes("/_next/static/media/p.woff2"),
+    fontRequests.join(),
+  );
 }
 
 void exportInlineCases().then(() => {
-  const exportCases = 14;
+  const exportCases = 18;
   console.log(`\n${exportCases - exportFailures}/${exportCases} html export cases passed`);
 
   process.exit(failures + subFailures + pathFailures + dynFailures + domainFailures + limitFailures + hrefFailures + cspFailures + metaFailures + handleFailures + recheckFailures + previewFailures + versionFailures + uploadFailures + seoFailures + contactFailures + githubFailures + exportFailures ? 1 : 0);
