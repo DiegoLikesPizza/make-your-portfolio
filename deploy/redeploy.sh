@@ -14,7 +14,7 @@
 # No downtime while building: the server runs whatever `live` points at, a copy
 # of a standalone build under releases/. A deploy builds while that release keeps
 # serving, copies the result into a new release, swaps the symlink and restarts
-# pm2. If the new release doesn't answer, `live` goes back to the previous one.
+# the service. If the new release doesn't answer, `live` goes back to the previous one.
 #
 # deploy/test-redeploy.sh exercises all of this in CI.
 set -euo pipefail
@@ -24,12 +24,35 @@ set -euo pipefail
 umask 027
 
 APP_DIR="${APP_DIR:-/srv/websites/make-your-portfolio.lfdiego.xyz/app}"
+APP_USER="${APP_USER:-portfolio}"
+SERVICE="${SERVICE:-make-your-portfolio}"
+# Legacy root pm2 app, migrated away from on the first systemd deploy (see below).
 PM2_APP="${PM2_APP:-make-your-portfolio}"
+# How the app is (re)started. Overridable so deploy/test-redeploy.sh can stub it.
+RESTART_CMD="${RESTART_CMD:-systemctl restart $SERVICE}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3004/signin}"
 HEALTH_ATTEMPTS="${HEALTH_ATTEMPTS:-30}"
 KEEP_RELEASES="${KEEP_RELEASES:-3}"
 LOCK_FILE="${LOCK_FILE:-/tmp/make-your-portfolio-deploy.lock}"
 export PATH="/opt/node22/bin:$PATH"
+
+# User/unit/chown steps only make sense as root on the box; skipped in CI.
+is_root() { [ "$(id -u)" = 0 ]; }
+
+# Create the unprivileged service user and install/refresh the systemd unit,
+# idempotently. A no-op off the box (e.g. in test-redeploy.sh).
+ensure_service() {
+  is_root || return 0
+  id "$APP_USER" >/dev/null 2>&1 || \
+    useradd --system --no-create-home --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
+  local src="$APP_DIR/deploy/make-your-portfolio.service"
+  local dst="/etc/systemd/system/${SERVICE}.service"
+  if [ -f "$src" ] && ! cmp -s "$src" "$dst"; then
+    install -m 644 "$src" "$dst"
+    systemctl daemon-reload
+    systemctl enable "$SERVICE" >/dev/null 2>&1 || true
+  fi
+}
 
 REF="${1:-${SSH_ORIGINAL_COMMAND:-}}"
 
@@ -93,8 +116,19 @@ cp -R .next/static "$release/.next/static"
 rm -f releases/*/.env releases/*/.env.*
 chmod -R go-rwx releases
 
-# pm2 runs the app root's copy of start.sh; keep it in step with the repo's.
+# The service runs as $APP_USER, so it must own its releases to read them and to
+# write the Next cache inside the current one. go-rwx above keeps everyone else
+# out. Root-only; a no-op in CI, where the app runs as whoever invoked the test.
+if is_root && id "$APP_USER" >/dev/null 2>&1; then
+  chown -R "$APP_USER:$APP_USER" releases
+  chown "$APP_USER:$APP_USER" .env 2>/dev/null || true
+fi
+
+# systemd runs the app root's copy of start.sh; keep it in step with the repo's.
 install -m 755 deploy/start.sh start.sh
+
+# Make sure the service user and unit exist before we (re)start the service.
+ensure_service
 
 previous="$(readlink live 2>/dev/null || true)"
 
@@ -102,7 +136,13 @@ point_live_at() {
   # A new link renamed over the old one, so `live` is never missing, even briefly.
   ln -sfn "$1" live.next
   mv -Tf live.next live
-  pm2 restart "$PM2_APP" --update-env
+  # One-time migration: free 127.0.0.1:3004 from the old root pm2 process the
+  # first time we deploy under systemd. A no-op once pm2 no longer owns it.
+  if is_root && command -v pm2 >/dev/null 2>&1 && pm2 describe "$PM2_APP" >/dev/null 2>&1; then
+    pm2 delete "$PM2_APP" >/dev/null 2>&1 || true
+    pm2 save >/dev/null 2>&1 || true
+  fi
+  $RESTART_CMD
 }
 
 healthy() {
