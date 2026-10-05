@@ -92,14 +92,14 @@ else rewrites to `/site/[host]`.
 ### Deployed at make-your-portfolio.lfdiego.xyz
 
 Running on the Hetzner box at `5.75.165.180`, which already hosts lfdiego.xyz, n8n and
-newqolhub behind **nginx + certbot + pm2 + Postgres 16**. The deployment follows that existing
+newqolhub behind **nginx + certbot + systemd + Postgres 16**. The deployment follows that existing
 pattern rather than the Caddy setup originally planned — installing Caddy would have fought nginx
 for ports 80/443 and could have taken three live sites down.
 
 | | |
 |---|---|
 | App | `/srv/websites/make-your-portfolio.lfdiego.xyz/app` |
-| Process | pm2 `make-your-portfolio`, `ecosystem.config.js`, bound to `127.0.0.1:3004` |
+| Process | systemd `make-your-portfolio.service`, runs as user `portfolio`, bound to `127.0.0.1:3004` |
 | Node | `/opt/node22` (v22.14) — the system Node 20 is too old for `nanoid@6` |
 | Database | Postgres 16, database `portfolio`, role `portfolio` |
 | Web | `/etc/nginx/sites-available/make-your-portfolio.lfdiego.xyz` |
@@ -131,8 +131,8 @@ One-time setup:
    ssh-keygen -t ed25519 -f make-your-portfolio-deploy -N "" -C github-deploy
    ```
 
-2. On the box, as the user that owns the app directory and the pm2 process, append the **public**
-   key to `~/.ssh/authorized_keys`, pinned to the deploy script so it can do nothing else:
+2. On the box, in root's `~/.ssh/authorized_keys` (the deploy runs the redeploy script as root),
+   append the **public** key, pinned to the deploy script so it can do nothing else:
 
    ```text
    command="/srv/websites/make-your-portfolio.lfdiego.xyz/app/deploy/redeploy.sh",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty ssh-ed25519 AAAA… github-deploy
@@ -151,15 +151,19 @@ One-time setup:
 
 #### Zero-downtime releases
 
-pm2 runs `start.sh`, which serves whatever `live` points at: a copy of a standalone build under
-`releases/<time>-<commit>/`. A deploy builds while the current release keeps serving, copies the
-result into a new release, renames a fresh symlink over `live` (so it is never missing, even for a
-moment) and restarts pm2, which takes about a second. Until that restart the running server keeps
-reading its own release.
+systemd runs `start.sh` as the unprivileged `portfolio` user, which serves whatever `live` points
+at: a copy of a standalone build under `releases/<time>-<commit>/`. A deploy builds while the
+current release keeps serving, copies the result into a new release, renames a fresh symlink over
+`live` (so it is never missing, even for a moment) and restarts the service, which takes about a
+second. Until that restart the running server keeps reading its own release.
 
 - If the new release doesn't answer its health check, `live` is pointed back at the previous
-  release and pm2 restarts onto it. The deploy still fails, so the Actions run shows red.
+  release and the service restarts onto it. The deploy still fails, so the Actions run shows red.
 - The newest three releases are kept.
+- `redeploy.sh` is self-bootstrapping: as root it creates the `portfolio` service user, installs/
+  refreshes `deploy/make-your-portfolio.service`, and `chown`s the releases to that user. The first
+  deploy after this change also removes the old root `pm2` app so the service can take the port; it
+  is a no-op on every deploy after.
 - `redeploy.sh` refreshes the app root's copy of `start.sh` on every deploy. The first deploy after
   this change still builds in place once, because the server it replaces runs from `.next`; from
   the second deploy on, a build no longer touches what's serving.
@@ -177,7 +181,7 @@ cd /srv/websites/make-your-portfolio.lfdiego.xyz/app && ls -1d releases/*/ | sor
 then point `live` at the one you want and restart:
 
 ```bash
-ln -sfn releases/<release> live.next && mv -Tf live.next live && pm2 restart make-your-portfolio
+ln -sfn releases/<release> live.next && mv -Tf live.next live && sudo systemctl restart make-your-portfolio
 ```
 
 `npx prisma generate` is not optional. `src/generated/prisma` is gitignored, so
@@ -193,7 +197,7 @@ until the client is regenerated.
   fast-forwarding and after installing; otherwise the next deploy that changes the lockfile would
   refuse to run. Any other file edited on the box still stops a deploy.
 - **The standalone server does not read the project `.env`.** It resolves env files relative to
-  `server.js` (`.next/standalone/`), not the project root. pm2 therefore runs `start.sh`, which
+  `server.js` (`.next/standalone/`), not the project root. systemd therefore runs `start.sh`, which
   sources `.env` and execs the server. Without it Auth.js never sees `AUTH_URL`, falls back to the
   server's own bind address, and every magic link points at `https://localhost:3004`.
   `AUTH_URL` is mandatory in production for the same reason.

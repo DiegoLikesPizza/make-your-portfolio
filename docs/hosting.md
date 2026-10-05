@@ -151,7 +151,7 @@ in production: first a minute after boot, then every 24 hours. The work happens
 in `POST /api/internal/recheck-domains`, because dropping a cache tag only works
 inside a Route Handler. The scheduler calls it over loopback with a token
 derived from `AUTH_SECRET`; anything without that token gets a 404. Like the
-rate limiter this is per process — right for the single pm2 process.
+rate limiter this is per process — right for the single systemd service process.
 
 ## After any change to a Domain row, drop the cache tag
 
@@ -171,7 +171,7 @@ it there too. See [architecture.md](architecture.md#caching-and-the-rule-that-fo
   `npx prisma generate` is a required step in it: `src/generated/prisma` is
   gitignored, so a pull never brings a client that knows about a new model, and
   the build fails type-checking until it is regenerated.
-- [`deploy/`](../deploy) has a systemd unit, a pm2 config and a start script.
+- [`deploy/`](../deploy) has the systemd unit and a start script.
 - [`Dockerfile`](../Dockerfile) and [`docker-compose.yml`](../docker-compose.yml)
   are there if you'd rather.
 - `ASSETS_DIR` is served straight off disk by Caddy at `/assets/*`, never

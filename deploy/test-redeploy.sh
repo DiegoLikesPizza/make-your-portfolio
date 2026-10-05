@@ -44,7 +44,9 @@ if [[ "$*" == "run build" ]]; then
 fi
 STUB
 printf '#!/usr/bin/env bash\n' > "$work/bin/npx"
-printf '#!/usr/bin/env bash\necho "$*" >> "$PM2_LOG"\n' > "$work/bin/pm2"
+# Stands in for `systemctl restart make-your-portfolio` (RESTART_CMD) — records
+# each restart so the tests can assert on it, as they did with the old pm2 stub.
+printf '#!/usr/bin/env bash\necho "restart" >> "$RESTART_LOG"\n' > "$work/bin/restart"
 printf '#!/usr/bin/env bash\n[[ "${HEALTH:-up}" == up ]]\n' > "$work/bin/curl"
 chmod +x "$work/bin/"*
 
@@ -73,7 +75,8 @@ old_release="$work/app/releases/19700101T000000000000000-old"
 
 deploy() {
   PATH="$work/bin:$PATH" APP_DIR="$work/app" LOCK_FILE="$work/deploy.lock" \
-    PM2_LOG="$work/pm2.log" HEALTH_ATTEMPTS=1 bash "$here/redeploy.sh" "$@" >/dev/null 2>&1
+    RESTART_CMD="$work/bin/restart" RESTART_LOG="$work/restart.log" \
+    HEALTH_ATTEMPTS=1 bash "$here/redeploy.sh" "$@" >/dev/null 2>&1
 }
 live_commit() { cat "$work/app/live/server.js"; }
 origin_main() { git -C "$work/dev" rev-parse HEAD; }
@@ -85,7 +88,7 @@ check "a deploy points live at a release" test -L "$work/app/live"
 check "the live release is the commit on main" test "$(live_commit)" = "$(origin_main)"
 check "the release carries the static files" test -f "$work/app/live/public/robots.txt"
 check "start.sh is installed at the app root" test -x "$work/app/start.sh"
-check "pm2 was restarted" grep -q "restart" "$work/pm2.log"
+check "the service was restarted" grep -q "restart" "$work/restart.log"
 check "the new release carries no env file" test ! -e "$work/app/live/.env"
 check "an older release's env files are removed" test -z "$(find "$old_release" -name '.env*' -print -quit)"
 check "no release is readable by other users" \
@@ -117,11 +120,11 @@ git -C "$work/app" checkout --quiet -- version.txt
 # --- a release that fails its health check -----------------------------------
 good="$(live_commit)"
 commit broken
-: > "$work/pm2.log"
+: > "$work/restart.log"
 if HEALTH=down deploy; then status=0; else status=$?; fi
 check "a failed health check fails the deploy" test "$status" -ne 0
 check "live goes back to the last good release" test "$(live_commit)" = "$good"
-check "pm2 restarted onto the new release and back" test "$(grep -c restart "$work/pm2.log")" -eq 2
+check "the service restarted onto the new release and back" test "$(grep -c restart "$work/restart.log")" -eq 2
 
 # --- refusing refs -------------------------------------------------------------
 if deploy "main; rm -rf /"; then status=0; else status=$?; fi

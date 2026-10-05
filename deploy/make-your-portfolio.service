@@ -1,34 +1,44 @@
-# systemd unit for the Next.js server.
+# systemd unit for the Next.js server. Installed and kept in step by
+# deploy/redeploy.sh, which also creates the `portfolio` service user; to set it
+# up by hand:
 #
 #   sudo cp deploy/make-your-portfolio.service /etc/systemd/system/
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now make-your-portfolio
 #
-# Caddy runs as its own service and proxies to 127.0.0.1:3000, so this process
-# never listens on a public interface.
+# The process binds 127.0.0.1:3004 (nginx proxies to it; the /api/caddy/authorize
+# endpoint must never be publicly reachable), and runs as the unprivileged
+# `portfolio` user rather than root.
 [Unit]
 Description=Make Your Portfolio
-After=network.target postgresql.service
-Wants=postgresql.service
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
 
 [Service]
 Type=simple
 User=portfolio
-WorkingDirectory=/srv/make-your-portfolio
-EnvironmentFile=/srv/make-your-portfolio/.env
+Group=portfolio
+WorkingDirectory=/srv/websites/make-your-portfolio.lfdiego.xyz/app
 Environment=NODE_ENV=production
-Environment=PORT=3000
+Environment=PORT=3004
 Environment=HOSTNAME=127.0.0.1
-ExecStart=/usr/bin/node .next/standalone/server.js
+# start.sh loads the app root's .env, then execs the release that `live` points
+# at (.next/standalone/server.js). It is refreshed from deploy/start.sh each deploy.
+ExecStart=/srv/websites/make-your-portfolio.lfdiego.xyz/app/start.sh
 Restart=always
 RestartSec=5
 
-# The app only ever writes to the assets volume.
+# --- hardening ---
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/srv/make-your-portfolio/data
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+# The server only writes the Next cache inside the current release.
+ReadWritePaths=/srv/websites/make-your-portfolio.lfdiego.xyz/app/releases
+MemoryMax=512M
 
 [Install]
 WantedBy=multi-user.target
